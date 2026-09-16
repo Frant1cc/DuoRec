@@ -1,0 +1,348 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "action.preparing" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preparing" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在准备" } }
+      }
+    },
+    "action.saving" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Saving" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在保存" } }
+      }
+    },
+    "action.start_recording" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start Recording" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开始录音" } }
+      }
+    },
+    "action.stop_and_save" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop and Save" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "停止并保存" } }
+      }
+    },
+    "alert.recording_failed.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording Couldn’t Continue" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音未能继续" } }
+      }
+    },
+    "common.off" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Off" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭" } }
+      }
+    },
+    "common.ok" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "OK" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "好" } }
+      }
+    },
+    "error.audio_writer.append_failed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn’t write the recording data." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音数据写入失败。" } }
+      }
+    },
+    "error.audio_writer.cannot_add_inputs" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn’t create the system audio and microphone tracks." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法创建系统声音和麦克风音轨。" } }
+      }
+    },
+    "error.audio_writer.export_unavailable" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The system couldn’t create an M4A export task." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "系统无法创建 M4A 导出任务。" } }
+      }
+    },
+    "error.audio_writer.finish_failed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The recording file didn’t finish correctly." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音文件没有正确完成。" } }
+      }
+    },
+    "error.audio_writer.missing_track" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The recording is missing the system audio or microphone track." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音中缺少系统声音或麦克风音轨。" } }
+      }
+    },
+    "error.audio_writer.no_audio" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No audio was received to save." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有收到可保存的声音。" } }
+      }
+    },
+    "error.audio_writer.start_failed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn’t start writing the recording file." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法开始写入录音文件。" } }
+      }
+    },
+    "error.folder_bookmark" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The selected save location will work for now, but DuoRec couldn’t remember the folder. You’ll need to choose it again the next time you open the app." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已选择当前保存位置，但无法记住该文件夹。下次打开 App 时需要重新选择。" } }
+      }
+    },
+    "error.no_display" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No display is available for capturing system audio." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "找不到可用于采集系统声音的显示器。" } }
+      }
+    },
+    "error.output_folder" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "DuoRec can’t access the Downloads folder." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法访问下载文件夹。" } }
+      }
+    },
+    "error.output_folder_access" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "DuoRec can’t write to the selected folder. Choose the save location again." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法写入所选文件夹，请重新选择保存位置。" } }
+      }
+    },
+    "error.permission.microphone" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Allow microphone access before recording." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请先允许麦克风访问。" } }
+      }
+    },
+    "error.permission.screen_monitoring" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Allow Screen & System Audio Recording before testing the input." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请先允许“屏幕与系统音频录制”权限。" } }
+      }
+    },
+    "error.permission.screen_recording" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Allow Screen & System Audio Recording. You may need to reopen the app after granting access for the first time." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请允许“屏幕与系统音频录制”权限；首次授权后可能需要重新打开 App。" } }
+      }
+    },
+    "error.retry_after_permission_change" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@\n\nIf you just changed recording permissions, reopen the app and try again." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%@\n\n如果刚刚修改过录音权限，请重新打开 App 后再试。" } }
+      }
+    },
+    "error.system_stopped_recording_detail" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The system stopped the recording: %@" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "系统停止了录音：%@" } }
+      }
+    },
+    "error.unknown" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unknown error" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未知错误" } }
+      }
+    },
+    "error.write_recording_detail" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "An error occurred while writing the recording: %@" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "写入录音时发生错误：%@" } }
+      }
+    },
+    "folder_picker.choose" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择" } }
+      }
+    },
+    "folder_picker.message" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Future recordings will be saved in this folder." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "之后的录音会保存在这个文件夹中。" } }
+      }
+    },
+    "folder_picker.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose Where to Save Recordings" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择录音保存位置" } }
+      }
+    },
+    "levels.help.idle" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Test the input before recording to make sure both sources have sound." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "点击“测试输入”，可在录音前确认双方都有声音" } }
+      }
+    },
+    "levels.help.monitoring" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Testing the input. No audio will be saved." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在测试输入，不会保存任何声音" } }
+      }
+    },
+    "levels.help.recording" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Monitoring and writing the recording." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在监听并写入录音" } }
+      }
+    },
+    "levels.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Input Levels" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "输入电平" } }
+      }
+    },
+    "menu.ready_accessibility" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "DuoRec is ready" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "DuoRec 已就绪" } }
+      }
+    },
+    "menu.recording_accessibility" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording, %@ elapsed" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在录音，已录制 %@" } }
+      }
+    },
+    "monitor.start" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Test Input" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "测试输入" } }
+      }
+    },
+    "monitor.stop" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop Test" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "停止测试" } }
+      }
+    },
+    "output.default_folder_name" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloads/DuoRec" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下载/DuoRec" } }
+      }
+    },
+    "permissions.grant" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Grant Access" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "授予权限" } }
+      }
+    },
+    "permissions.help" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Allow Screen & System Audio Recording and microphone access." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要允许屏幕与系统音频录制，以及麦克风访问。" } }
+      }
+    },
+    "permissions.open_settings" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open System Settings" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开系统设置" } }
+      }
+    },
+    "permissions.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording Access" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音权限" } }
+      }
+    },
+    "recording.headphones_tip" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Wear headphones to prevent speaker audio from being recorded twice." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "建议佩戴耳机，避免扬声器声音被麦克风重复录入" } }
+      }
+    },
+    "recording.raw_tracks_filename" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Raw Tracks" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "原始双轨" } }
+      }
+    },
+    "recording.reveal" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show Recording in Finder" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在访达中显示录音" } }
+      }
+    },
+    "recording.reveal_recent" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show Recent Recording in Finder" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在访达中显示最近的录音" } }
+      }
+    },
+    "settings.microphone" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Microphone" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "麦克风" } }
+      }
+    },
+    "settings.microphone_boost" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Microphone Boost" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "麦克风增强" } }
+      }
+    },
+    "settings.save_location" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save Location" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存位置" } }
+      }
+    },
+    "settings.system_default" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "System Default" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "系统默认" } }
+      }
+    },
+    "settings.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording Settings" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音设置" } }
+      }
+    },
+    "source.microphone" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Microphone" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "麦克风" } }
+      }
+    },
+    "source.system_audio" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "System Audio" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "系统声音" } }
+      }
+    },
+    "status.finishing" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Creating M4A…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在生成 M4A…" } }
+      }
+    },
+    "status.monitoring" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Testing Input" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在测试输入" } }
+      }
+    },
+    "status.preparing" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preparing to Record…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在准备录音…" } }
+      }
+    },
+    "status.ready" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ready" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "准备就绪" } }
+      }
+    },
+    "status.recording" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording System Audio and Microphone" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在录制系统声音和麦克风" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

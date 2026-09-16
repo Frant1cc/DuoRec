@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode user data and local build output
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+
+# Swift Package Manager build output
+.build/
+.swiftpm/xcode/package.xcworkspace/xcuserdata/
+.swiftpm/xcode/xcuserdata/
+
+# Archives and debug symbols
+*.xcarchive
+*.dSYM
+*.dSYM.zip
+*.app
+*.ipa
+
+# Local environment files
+.env
+.env.*
+!.env.example

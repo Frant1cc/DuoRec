@@ -1,0 +1,22 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSMicrophoneUsageDescription" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DuoRec needs microphone access to record it together with system audio."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DuoRec 需要使用麦克风，与系统声音一起完成双路录音。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
