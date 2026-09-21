@@ -85,10 +85,17 @@ final class DualTrackAudioWriter {
     private var hasSeenMicrophone = false
     private var pendingSamples: [(CMSampleBuffer, AudioSource)] = []
     private var isFinishing = false
+    // Capture callbacks and shutdown can arrive on different queues.
+    private let lock = NSLock()
+    private var finishResult: Result<URL, Error>?
+    private var finishWaiters: [(Result<URL, Error>) -> Void] = []
 
     init(outputURL: URL) throws {
         self.outputURL = outputURL
-        writer = try AVAssetWriter(outputURL: outputURL, fileType: .m4a)
+        writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
+        // Completed fragments remain readable if the process exits without finishing.
+        writer.movieFragmentInterval = CMTime(seconds: 5, preferredTimescale: 48_000)
+        writer.initialMovieFragmentInterval = CMTime(seconds: 1, preferredTimescale: 48_000)
 
         systemInput = AVAssetWriterInput(
             mediaType: .audio,
@@ -120,6 +127,8 @@ final class DualTrackAudioWriter {
     }
 
     func append(_ sampleBuffer: CMSampleBuffer, source: AudioSource) throws {
+        lock.lock()
+        defer { lock.unlock() }
         guard !isFinishing else { return }
 
         switch source {
@@ -139,25 +148,61 @@ final class DualTrackAudioWriter {
     }
 
     func finish() async throws -> URL {
+        try await withCheckedThrowingContinuation { continuation in
+            finish { continuation.resume(with: $0) }
+        }
+    }
+
+    private func finish(completion: @escaping (Result<URL, Error>) -> Void) {
+        lock.lock()
+        if let finishResult {
+            lock.unlock()
+            completion(finishResult)
+            return
+        }
+        finishWaiters.append(completion)
+        guard !isFinishing else {
+            lock.unlock()
+            return
+        }
         isFinishing = true
 
-        if !hasStartedSession, !pendingSamples.isEmpty {
-            try beginSession()
+        do {
+            guard writer.status == .unknown || writer.status == .writing else {
+                throw writer.error ?? AudioWriterError.finishFailed
+            }
+            if !hasStartedSession, !pendingSamples.isEmpty {
+                try beginSession()
+            }
+            guard hasStartedSession else {
+                writer.cancelWriting()
+                throw AudioWriterError.noAudio
+            }
+            guard writer.status == .writing else {
+                throw writer.error ?? AudioWriterError.finishFailed
+            }
+            systemInput.markAsFinished()
+            microphoneInput.markAsFinished()
+            lock.unlock()
+            writer.finishWriting { [self] in
+                let result: Result<URL, Error> = writer.status == .completed
+                    ? .success(outputURL)
+                    : .failure(writer.error ?? AudioWriterError.finishFailed)
+                completeFinish(result)
+            }
+        } catch {
+            lock.unlock()
+            completeFinish(.failure(error))
         }
+    }
 
-        guard hasStartedSession else {
-            writer.cancelWriting()
-            throw AudioWriterError.noAudio
-        }
-
-        systemInput.markAsFinished()
-        microphoneInput.markAsFinished()
-        await writer.finishWriting()
-
-        guard writer.status == .completed else {
-            throw writer.error ?? AudioWriterError.finishFailed
-        }
-        return outputURL
+    private func completeFinish(_ result: Result<URL, Error>) {
+        lock.lock()
+        finishResult = result
+        let waiters = finishWaiters
+        finishWaiters.removeAll()
+        lock.unlock()
+        waiters.forEach { $0(result) }
     }
 
     private func beginSession() throws {
@@ -187,6 +232,9 @@ final class DualTrackAudioWriter {
     }
 
     private func appendImmediately(_ sampleBuffer: CMSampleBuffer, source: AudioSource) throws {
+        guard writer.status == .writing else {
+            throw writer.error ?? AudioWriterError.appendFailed
+        }
         let input = source == .system ? systemInput : microphoneInput
         guard input.isReadyForMoreMediaData else { return }
         guard input.append(sampleBuffer) else {
@@ -199,14 +247,14 @@ enum AudioMixer {
     static func mixTracks(in sourceURL: URL, to destinationURL: URL) async throws {
         let asset = AVURLAsset(url: sourceURL)
         let tracks = try await asset.loadTracks(withMediaType: .audio)
-        guard tracks.count >= 2 else {
+        guard !tracks.isEmpty else {
             throw AudioWriterError.missingTrack
         }
 
         let mix = AVMutableAudioMix()
         mix.inputParameters = tracks.enumerated().map { index, track in
             let parameters = AVMutableAudioMixInputParameters(track: track)
-            parameters.setVolume(index == 0 ? 0.5 : 1.0, at: .zero)
+            parameters.setVolume(tracks.count > 1 && index == 0 ? 0.5 : 1.0, at: .zero)
             return parameters
         }
 
@@ -214,7 +262,12 @@ enum AudioMixer {
             throw AudioWriterError.exportUnavailable
         }
         exporter.audioMix = mix
-        try await exporter.export(to: destinationURL, as: .m4a)
+        do {
+            try await exporter.export(to: destinationURL, as: .m4a)
+        } catch {
+            try? FileManager.default.removeItem(at: destinationURL)
+            throw error
+        }
     }
 }
 
@@ -292,7 +345,7 @@ private enum AudioGainProcessor {
     }
 }
 
-private enum AudioWriterError: LocalizedError {
+enum AudioWriterError: LocalizedError {
     case cannotAddInputs
     case startFailed
     case appendFailed

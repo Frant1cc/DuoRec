@@ -1,6 +1,30 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "error.saved_raw_recording" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The mixed recording could not be saved. A playable original recording has been saved; use Show in Finder to open it." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "混音保存失败，已保存可播放的原始录音。请点击“在访达中显示”查看。" } }
+      }
+    },
+    "error.recording_retained" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The recording could not be saved. The original file has been kept for recovery. Quit was cancelled if requested; check the recovery folder." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音保存未完成，原始文件已保留供恢复。如果正在退出，已取消本次退出；请查看待恢复文件夹。" } }
+      }
+    },
+    "error.recovery_retained" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Some interrupted recordings could not be recovered automatically. Their original files have been kept in the recovery folder." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "部分中断录音无法自动恢复，原始文件已保留在待恢复文件夹中。" } }
+      }
+    },
+    "recording.reveal_recovery" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Recovery Folder" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开待恢复文件夹" } }
+      }
+    },
     "action.preparing" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Preparing" } },

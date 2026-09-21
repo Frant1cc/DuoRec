@@ -31,6 +31,7 @@ struct ContentView: View {
         .frame(width: 460, height: 650)
         .background(Color(nsColor: .windowBackgroundColor))
         .task {
+            await recorder.recoverInterruptedRecordings()
             recorder.refreshMicrophones()
             await recorder.refreshPermissions()
         }
@@ -47,6 +48,9 @@ struct ContentView: View {
             set: { if !$0 { recorder.errorMessage = nil } }
         )) {
             Button("common.ok") { recorder.errorMessage = nil }
+            if recorder.hasRecoveryFiles {
+                Button("recording.reveal_recovery") { recorder.revealRecoveryFiles() }
+            }
         } message: {
             Text(recorder.errorMessage ?? String(localized: "error.unknown"))
         }

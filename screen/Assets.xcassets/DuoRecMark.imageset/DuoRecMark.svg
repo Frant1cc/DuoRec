@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512" fill="none">
   <defs>
     <linearGradient id="microphone" x1="213" y1="121" x2="305" y2="322" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FFFFFF"/>

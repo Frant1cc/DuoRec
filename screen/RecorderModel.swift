@@ -37,6 +37,14 @@ final class RecorderModel: ObservableObject {
     private var monitorStream: SCStream?
     private var monitorOutput: CaptureOutput?
     private var rawRecordingURL: URL?
+    private var preparationTask: Task<Void, Never>?
+    private var finishTask: Task<Bool, Never>?
+    private var sessionID: UUID?
+    private var pendingCaptureError: String?
+    private var didCheckRecovery = false
+    private var lastSaveSucceeded = true
+    @Published private(set) var isTerminating = false
+    @Published private(set) var hasRecoveryFiles = false
     private var elapsedTask: Task<Void, Never>?
     private var isAccessingSecurityScopedOutput = false
     private var permissionCheckTask: Task<ScreenRecordingAccess, Never>?
@@ -57,8 +65,8 @@ final class RecorderModel: ObservableObject {
     var isRecording: Bool { state == .recording }
     var isPreparing: Bool { state == .preparing }
     var isFinishing: Bool { state == .finishing }
-    var isBusy: Bool { state != .idle || isMonitoring }
-    var isTransitioning: Bool { state == .preparing || state == .finishing }
+    var isBusy: Bool { state != .idle || isMonitoring || isTerminating }
+    var isTransitioning: Bool { state == .preparing || state == .finishing || isTerminating }
     var hasAllPermissions: Bool { hasScreenPermission && hasMicrophonePermission }
     var hasScreenPermission: Bool { screenAccess == .granted }
 
@@ -191,8 +199,19 @@ final class RecorderModel: ObservableObject {
     }
 
     func startRecording() async {
-        guard state == .idle else { return }
+        guard state == .idle, !isTerminating else { return }
+        state = .preparing
+        let task = Task { await prepareRecording() }
+        preparationTask = task
+        await task.value
+        preparationTask = nil
+    }
 
+    private func prepareRecording() async {
+        let id = UUID()
+        sessionID = id
+        lastSaveSucceeded = true
+        pendingCaptureError = nil
         if isMonitoring {
             await stopInputMonitoring()
         }
@@ -217,7 +236,8 @@ final class RecorderModel: ObservableObject {
                 microphoneGainDB: microphoneBoostDB,
                 levelHandler: { [weak self] source, level in
                     Task { @MainActor [weak self] in
-                        guard let self else { return }
+                        guard let self, self.sessionID == id,
+                              self.state == .preparing || self.state == .recording else { return }
                         switch source {
                         case .system: self.systemLevel = level
                         case .microphone: self.microphoneLevel = level
@@ -226,20 +246,22 @@ final class RecorderModel: ObservableObject {
                 },
                 errorHandler: { [weak self] message in
                     Task { @MainActor [weak self] in
-                        self?.errorMessage = message
+                        await self?.handleCaptureFailure(message, session: id)
                     }
                 }
             )
 
-            let stream = try await makeStream(output: output)
-
             captureOutput = output
+            let stream = try await makeStream(output: output)
             self.stream = stream
             try await stream.startCapture()
             captureAccessSucceeded()
 
             state = .recording
             startElapsedTimer()
+            if let pendingCaptureError {
+                await handleCaptureFailure(pendingCaptureError, session: id)
+            }
         } catch {
             captureAccessFailed(error)
             await cleanUpAfterFailure()
@@ -249,15 +271,23 @@ final class RecorderModel: ObservableObject {
     }
 
     func toggleInputMonitoring() async {
-        if isMonitoring {
-            await stopInputMonitoring()
-        } else {
-            await startInputMonitoring()
+        guard state == .idle, !isTerminating else { return }
+        state = .preparing
+        let task = Task {
+            if isMonitoring {
+                await stopInputMonitoring()
+            } else {
+                await startInputMonitoring()
+            }
+            state = .idle
         }
+        preparationTask = task
+        await task.value
+        preparationTask = nil
     }
 
     private func startInputMonitoring() async {
-        guard state == .idle, !isMonitoring else { return }
+        guard !isMonitoring else { return }
         errorMessage = nil
 
         do {
@@ -298,34 +328,135 @@ final class RecorderModel: ObservableObject {
     }
 
     func stopRecording() async {
-        guard state == .recording, let stream, let captureOutput else { return }
+        _ = await finishRecording()
+    }
+
+    private func handleCaptureFailure(_ message: String, session id: UUID) async {
+        guard sessionID == id else { return }
+        if state == .preparing {
+            pendingCaptureError = message
+            return
+        }
+        guard state == .recording else { return }
+        errorMessage = message
+        _ = await finishRecording()
+    }
+
+    private func finishRecording() async -> Bool {
+        if let finishTask { return await finishTask.value }
+        guard state == .recording, let stream, let captureOutput else { return lastSaveSucceeded }
         state = .finishing
         elapsedTask?.cancel()
         elapsedTask = nil
-
-        do {
-            try await stream.stopCapture()
-            let rawURL = try await captureOutput.finish()
-            let finalURL = try finalURL(for: rawURL)
-            try await AudioMixer.mixTracks(in: rawURL, to: finalURL)
-            try? FileManager.default.removeItem(at: rawURL)
-
-            lastRecordingURL = finalURL
-            NSSound(named: "Glass")?.play()
-        } catch {
-            if let rawRecordingURL, FileManager.default.fileExists(atPath: rawRecordingURL.path) {
-                lastRecordingURL = try? preserveRawRecording(rawRecordingURL)
-            }
-            errorMessage = userFacingMessage(for: error)
-        }
-
-        self.stream = nil
-        self.captureOutput = nil
-        rawRecordingURL = nil
-        endAccessingOutputFolder()
-        systemLevel = 0
-        microphoneLevel = 0
+        let task = Task { await saveRecording(stream: stream, output: captureOutput) }
+        finishTask = task
+        let saved = await task.value
+        finishTask = nil
+        lastSaveSucceeded = saved
         state = .idle
+        return saved
+    }
+
+    private func saveRecording(stream: SCStream, output: CaptureOutput) async -> Bool {
+        defer {
+            self.stream = nil
+            captureOutput = nil
+            rawRecordingURL = nil
+            sessionID = nil
+            pendingCaptureError = nil
+            endAccessingOutputFolder()
+            systemLevel = 0
+            microphoneLevel = 0
+        }
+        do {
+            let rawURL = try await RecordingFinalizer.finish(
+                stopping: { try await stream.stopCapture() },
+                finishing: { try await output.finish() }
+            )
+            try await exportRecording(rawURL)
+            NSSound(named: "Glass")?.play()
+            return true
+        } catch {
+            // A failed writer may still contain readable movie fragments. Only
+            // advertise a backup after AVFoundation has verified its audio.
+            if let rawRecordingURL, await preserveReadableRecording(rawRecordingURL) {
+                errorMessage = String(localized: "error.saved_raw_recording")
+                return true
+            }
+            hasRecoveryFiles = true
+            errorMessage = String(localized: "error.recording_retained") + "\n" + error.localizedDescription
+            return false
+        }
+    }
+
+    private func exportRecording(_ rawURL: URL) async throws {
+        let destination = try finalURL(for: rawURL)
+        try await AudioMixer.mixTracks(in: rawURL, to: destination)
+        lastRecordingURL = destination
+        try? FileManager.default.removeItem(at: rawURL)
+    }
+
+    private func preserveReadableRecording(_ rawURL: URL) async -> Bool {
+        do {
+            let asset = AVURLAsset(url: rawURL)
+            let tracks = try await asset.loadTracks(withMediaType: .audio)
+            let duration = try await asset.load(.duration)
+            guard !tracks.isEmpty, duration.isNumeric, duration.seconds > 0 else { return false }
+            lastRecordingURL = try preserveRawRecording(rawURL)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    func prepareForTermination() async -> Bool {
+        guard !isTerminating else { return false }
+        isTerminating = true
+        if let preparationTask { await preparationTask.value }
+        let saved = await finishRecording()
+        await stopInputMonitoring()
+        // Keep new recordings disabled until AppKit has actually exited.
+        if !saved { isTerminating = false }
+        return saved
+    }
+
+    func recoverInterruptedRecordings() async {
+        guard !didCheckRecovery, state == .idle, !isTerminating else { return }
+        didCheckRecovery = true
+        state = .finishing
+        let task = Task { await recoverFiles() }
+        finishTask = task
+        _ = await task.value
+        finishTask = nil
+        state = .idle
+    }
+
+    private func recoverFiles() async -> Bool {
+        defer { endAccessingOutputFolder() }
+        do {
+            let folder = try recoveryFolder()
+            let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+                .filter { $0.lastPathComponent.hasPrefix("active-") && ["mov", "m4a"].contains($0.pathExtension) }
+                .sorted { $0.lastPathComponent < $1.lastPathComponent }
+            guard !files.isEmpty else { return true }
+            try beginAccessingOutputFolder()
+            var failed = false
+            for file in files {
+                do { try await exportRecording(file) }
+                catch { failed = true }
+            }
+            hasRecoveryFiles = failed
+            if failed { errorMessage = String(localized: "error.recovery_retained") }
+            return !failed
+        } catch {
+            hasRecoveryFiles = true
+            errorMessage = String(localized: "error.recovery_retained") + "\n" + error.localizedDescription
+            return false
+        }
+    }
+
+    func revealRecoveryFiles() {
+        if let folder = try? recoveryFolder() { NSWorkspace.shared.open(folder) }
     }
 
     func reveal(_ url: URL) {
@@ -396,9 +527,11 @@ final class RecorderModel: ObservableObject {
     }
 
     private func makeRawRecordingURL() throws -> URL {
-        let fileManager = FileManager.default
-        try fileManager.createDirectory(at: outputFolderURL, withIntermediateDirectories: true)
+        try recoveryFolder().appendingPathComponent("active-\(UUID().uuidString).mov")
+    }
 
+    private func recoveryFolder() throws -> URL {
+        let fileManager = FileManager.default
         let support = try fileManager.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
@@ -406,8 +539,7 @@ final class RecorderModel: ObservableObject {
             create: true
         ).appendingPathComponent("DuoRec", isDirectory: true)
         try fileManager.createDirectory(at: support, withIntermediateDirectories: true)
-
-        return support.appendingPathComponent("active-\(UUID().uuidString).m4a")
+        return support
     }
 
     private func finalURL(for rawURL: URL) throws -> URL {
@@ -424,7 +556,7 @@ final class RecorderModel: ObservableObject {
         let destination = uniqueURL(
             in: outputFolderURL,
             baseName: "\(formatter.string(from: Date())) DuoRec - \(String(localized: "recording.raw_tracks_filename"))",
-            extension: "m4a"
+            extension: rawURL.pathExtension
         )
         try FileManager.default.moveItem(at: rawURL, to: destination)
         return destination
@@ -495,15 +627,27 @@ final class RecorderModel: ObservableObject {
     }
 
     private func cleanUpAfterFailure() async {
-        if let stream {
-            try? await stream.stopCapture()
+        if let stream { try? await stream.stopCapture() }
+        if let captureOutput {
+            do {
+                let rawURL = try await captureOutput.finish()
+                do { try await exportRecording(rawURL) }
+                catch {
+                    lastSaveSucceeded = await preserveReadableRecording(rawURL)
+                    hasRecoveryFiles = hasRecoveryFiles || !lastSaveSucceeded
+                }
+            } catch AudioWriterError.noAudio {
+                if let rawRecordingURL { try? FileManager.default.removeItem(at: rawRecordingURL) }
+            } catch {
+                hasRecoveryFiles = true
+                lastSaveSucceeded = false
+            }
         }
         stream = nil
         captureOutput = nil
-        if let rawRecordingURL {
-            try? FileManager.default.removeItem(at: rawRecordingURL)
-        }
         rawRecordingURL = nil
+        sessionID = nil
+        pendingCaptureError = nil
         endAccessingOutputFolder()
         elapsedTask?.cancel()
         elapsedTask = nil

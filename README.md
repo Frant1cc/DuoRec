@@ -52,3 +52,26 @@
 - 麦克风增强可选择关闭、+6 dB 或 +12 dB
 - 合成失败时保留原始双轨文件
 - 不录屏、不转写、不上传网络
+
+## 录音保存与中断恢复
+
+- 采集发生异常时会停止计时并自动保存已经收到的声音；停止采集本身报错不会跳过文件收尾。
+- 录音中按 ⌘Q 退出，会等待保存完成。无法保存可播放的文件时取消本次退出，并保留原始文件供恢复。
+- 录制过程中使用带片段的 MOV 临时文件，首次约 1 秒、随后每 5 秒写入一个片段，正常保存仍输出 M4A。
+- 意外崩溃或强制结束后，下次启动自动尝试将中断文件恢复到所选保存位置；无法恢复的文件保留，并提供“打开待恢复文件夹”入口。
+- 强制结束可能丢失最后未写入的片段；第一片段完成前的短录音、磁盘故障，以及旧版未收尾的 M4A 不保证可恢复。
+- 混音失败时，只有确认原始文件包含可读取的音频后，才将它显示为已保存的备份。
+
+## 回归检查
+
+以下检查使用合成音频，不采集真实系统声音或麦克风。音频检查需在允许访问 macOS 音频编码服务的本机会话运行。
+
+```sh
+mkdir -p .build
+xcrun swiftc -parse-as-library -module-cache-path .build/ModuleCache.noindex screen/AudioCapture.swift screen/RecordingFinalizer.swift Tests/RecordingSafetyChecks.swift -o .build/recording-safety-checks
+.build/recording-safety-checks "$PWD/.build"
+xcrun swiftc -parse-as-library -module-cache-path .build/ModuleCache.noindex screen/RecordingTermination.swift Tests/TerminationChecks.swift -o .build/termination-checks
+.build/termination-checks
+```
+
+覆盖：停止失败后的文件收尾、音频解码、并发与重复保存、空录音、单路声音、中断文件恢复，以及退出等待和失败取消。

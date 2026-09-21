@@ -2,25 +2,29 @@ import SwiftUI
 
 @main
 struct DuoRecApp: App {
+    @NSApplicationDelegateAdaptor(RecorderApplicationDelegate.self) private var appDelegate
     @StateObject private var recorder = RecorderModel()
 
     var body: some Scene {
         WindowGroup("DuoRec") {
             ContentView()
                 .environmentObject(recorder)
+                .onAppear { appDelegate.recorder = recorder }
         }
         .windowResizability(.contentSize)
 
         MenuBarExtra {
             MenuBarRecorderView()
                 .environmentObject(recorder)
+                .onAppear { appDelegate.recorder = recorder }
         } label: {
             if recorder.isRecording {
-                HStack(spacing: 4) {
-                    Image(systemName: "record.circle.fill")
-                        .symbolRenderingMode(.multicolor)
+                Label {
                     Text(recorder.formattedElapsedTime)
                         .monospacedDigit()
+                } icon: {
+                    Image(systemName: "record.circle.fill")
+                        .symbolRenderingMode(.multicolor)
                 }
                 .foregroundStyle(.red)
                 .accessibilityLabel(
@@ -33,15 +37,46 @@ struct DuoRecApp: App {
                 Image(systemName: "hourglass")
                     .accessibilityLabel(recorder.statusText)
             } else {
-                Image("DuoRecMark")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 16, height: 16)
+                Image(nsImage: MenuBarArtwork.ready)
                     .accessibilityLabel(String(localized: "menu.ready_accessibility"))
             }
         }
         .menuBarExtraStyle(.window)
+    }
+}
+
+private enum MenuBarArtwork {
+    static let ready: NSImage = {
+        // Size the image handed to the native status item in points. A SwiftUI
+        // frame alone doesn't set its intrinsic size when the display changes.
+        let image = (NSImage(named: "DuoRecMark")?.copy() as? NSImage)
+            ?? NSImage(systemSymbolName: "mic", accessibilityDescription: nil)
+            ?? NSImage(size: NSSize(width: 16, height: 16))
+        image.size = NSSize(width: 16, height: 16)
+        image.isTemplate = true
+        return image
+    }()
+}
+
+@MainActor
+final class RecorderApplicationDelegate: NSObject, NSApplicationDelegate {
+    weak var recorder: RecorderModel?
+    private let termination = RecordingTermination()
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let recorder else { return .terminateNow }
+        let decision = termination.request(
+            isBusy: recorder.isBusy,
+            prepare: { await recorder.prepareForTermination() },
+            reply: { saved in
+                sender.reply(toApplicationShouldTerminate: saved)
+                if !saved {
+                    sender.activate(ignoringOtherApps: true)
+                    sender.windows.first(where: { $0.canBecomeMain })?.makeKeyAndOrderFront(nil)
+                }
+            }
+        )
+        return decision == .later ? .terminateLater : .terminateNow
     }
 }
 
