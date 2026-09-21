@@ -3,6 +3,7 @@ import AppKit
 import Combine
 import CoreGraphics
 import CoreMedia
+import OSLog
 @preconcurrency import ScreenCaptureKit
 
 @MainActor
@@ -18,7 +19,7 @@ final class RecorderModel: ObservableObject {
     @Published private(set) var systemLevel = 0.0
     @Published private(set) var microphoneLevel = 0.0
     @Published private(set) var elapsedSeconds = 0
-    @Published private(set) var hasScreenPermission = false
+    @Published private(set) var screenAccess: ScreenRecordingAccess = .checking
     @Published private(set) var hasMicrophonePermission = false
     @Published private(set) var microphones: [AVCaptureDevice] = []
     @Published var selectedMicrophoneID: String?
@@ -38,6 +39,9 @@ final class RecorderModel: ObservableObject {
     private var rawRecordingURL: URL?
     private var elapsedTask: Task<Void, Never>?
     private var isAccessingSecurityScopedOutput = false
+    private var permissionCheckTask: Task<ScreenRecordingAccess, Never>?
+    private var permissionRevision = 0
+    private let permissionLogger = Logger(subsystem: "frant1c.duorec", category: "RecordingPermission")
 
     private static let outputFolderBookmarkKey = "outputFolderBookmark"
     private static let microphoneBoostKey = "microphoneBoostDB"
@@ -56,6 +60,7 @@ final class RecorderModel: ObservableObject {
     var isBusy: Bool { state != .idle || isMonitoring }
     var isTransitioning: Bool { state == .preparing || state == .finishing }
     var hasAllPermissions: Bool { hasScreenPermission && hasMicrophonePermission }
+    var hasScreenPermission: Bool { screenAccess == .granted }
 
     var outputFolderDisplayName: String {
         let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
@@ -95,9 +100,41 @@ final class RecorderModel: ObservableObject {
             : String(format: "%02d:%02d", minutes, seconds)
     }
 
-    func refreshPermissions() {
-        hasScreenPermission = CGPreflightScreenCaptureAccess()
+    func refreshPermissions() async {
         hasMicrophonePermission = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+        if isRecording || isMonitoring { return }
+        if let permissionCheckTask {
+            _ = await permissionCheckTask.value
+            return
+        }
+
+        screenAccess = .checking
+        let revision = permissionRevision
+        let task = Task {
+            await ScreenRecordingAccess.check {
+                // Use the same framework as capture: the CoreGraphics preflight can
+                // disagree with ScreenCaptureKit and must not decide this badge.
+                _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            }
+        }
+        permissionCheckTask = task
+        let result = await task.value
+        permissionCheckTask = nil
+        guard revision == permissionRevision else { return }
+        screenAccess = result
+        permissionLogger.notice("Permission check: \(String(describing: result), privacy: .public)")
+    }
+
+    private func captureAccessSucceeded() {
+        permissionRevision += 1
+        screenAccess = .granted
+    }
+
+    private func captureAccessFailed(_ error: Error) {
+        guard ScreenRecordingAccess.isPermissionDenial(error) else { return }
+        permissionRevision += 1
+        screenAccess = .denied
+        permissionLogger.error("ScreenCaptureKit denied capture access")
     }
 
     func refreshMicrophones() {
@@ -118,11 +155,7 @@ final class RecorderModel: ObservableObject {
             hasMicrophonePermission = await AVCaptureDevice.requestAccess(for: .audio)
         }
 
-        if !CGPreflightScreenCaptureAccess() {
-            hasScreenPermission = CGRequestScreenCaptureAccess()
-        }
-
-        refreshPermissions()
+        await refreshPermissions()
         refreshMicrophones()
     }
 
@@ -174,10 +207,6 @@ final class RecorderModel: ObservableObject {
             guard hasMicrophonePermission else {
                 throw RecorderError.permission(String(localized: "error.permission.microphone"))
             }
-            guard hasScreenPermission else {
-                throw RecorderError.permission(String(localized: "error.permission.screen_recording"))
-            }
-
             try beginAccessingOutputFolder()
             let rawURL = try makeRawRecordingURL()
             rawRecordingURL = rawURL
@@ -207,10 +236,12 @@ final class RecorderModel: ObservableObject {
             captureOutput = output
             self.stream = stream
             try await stream.startCapture()
+            captureAccessSucceeded()
 
             state = .recording
             startElapsedTimer()
         } catch {
+            captureAccessFailed(error)
             await cleanUpAfterFailure()
             errorMessage = userFacingMessage(for: error)
             state = .idle
@@ -234,10 +265,6 @@ final class RecorderModel: ObservableObject {
             guard hasMicrophonePermission else {
                 throw RecorderError.permission(String(localized: "error.permission.microphone"))
             }
-            guard hasScreenPermission else {
-                throw RecorderError.permission(String(localized: "error.permission.screen_monitoring"))
-            }
-
             let output = CaptureOutput(
                 writer: nil,
                 microphoneGainDB: microphoneBoostDB,
@@ -248,8 +275,10 @@ final class RecorderModel: ObservableObject {
             monitorOutput = output
             monitorStream = stream
             try await stream.startCapture()
+            captureAccessSucceeded()
             isMonitoring = true
         } catch {
+            captureAccessFailed(error)
             monitorStream = nil
             monitorOutput = nil
             isMonitoring = false
@@ -481,6 +510,9 @@ final class RecorderModel: ObservableObject {
     }
 
     private func userFacingMessage(for error: Error) -> String {
+        if ScreenRecordingAccess.isPermissionDenial(error) {
+            return String(localized: "error.permission.screen_denied")
+        }
         if let recorderError = error as? RecorderError {
             return recorderError.localizedDescription
         }

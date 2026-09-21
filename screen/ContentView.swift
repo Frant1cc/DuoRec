@@ -31,13 +31,16 @@ struct ContentView: View {
         .frame(width: 460, height: 650)
         .background(Color(nsColor: .windowBackgroundColor))
         .task {
-            recorder.refreshPermissions()
             recorder.refreshMicrophones()
+            await recorder.refreshPermissions()
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
-            recorder.refreshPermissions()
             recorder.refreshMicrophones()
+            Task { await recorder.refreshPermissions() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await recorder.refreshPermissions() }
         }
         .alert("alert.recording_failed.title", isPresented: Binding(
             get: { recorder.errorMessage != nil },
@@ -81,7 +84,7 @@ struct ContentView: View {
                 Text("permissions.title")
                     .font(.headline)
                 Spacer()
-                PermissionBadge(title: "source.system_audio", isGranted: recorder.hasScreenPermission)
+                systemPermissionBadge
                 PermissionBadge(title: "source.microphone", isGranted: recorder.hasMicrophonePermission)
             }
 
@@ -91,16 +94,45 @@ struct ContentView: View {
                         Task { await recorder.requestPermissions() }
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(recorder.screenAccess == .checking)
 
                     Button("permissions.open_settings") {
                         recorder.openPrivacySettings()
                     }
                     .buttonStyle(.borderless)
                 }
-                Text("permissions.help")
+                Text(permissionHelp)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var systemPermissionBadge: some View {
+        switch recorder.screenAccess {
+        case .checking:
+            HStack(spacing: 5) {
+                ProgressView().controlSize(.mini)
+                Text("permissions.checking")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        case .unavailable:
+            Label("permissions.check_failed", systemImage: "questionmark.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .granted, .denied:
+            PermissionBadge(title: "source.system_audio", isGranted: recorder.hasScreenPermission)
+        }
+    }
+
+    private var permissionHelp: String {
+        switch recorder.screenAccess {
+        case .checking: String(localized: "permissions.checking_help")
+        case .denied: String(localized: "error.permission.screen_denied")
+        case .unavailable(let detail): detail
+        case .granted: String(localized: "permissions.help")
         }
     }
 

@@ -223,6 +223,30 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下载/DuoRec" } }
       }
     },
+    "permissions.checking" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Checking system audio…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在检查系统声音…" } }
+      }
+    },
+    "permissions.checking_help" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Checking recording access. Respond to the macOS permission prompt if one appears." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在检查录音权限；如果 macOS 弹出授权窗口，请完成授权。" } }
+      }
+    },
+    "permissions.check_failed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Check failed" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "暂时无法检查" } }
+      }
+    },
+    "error.permission.screen_denied" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "macOS denied system audio access for this version. If the permission switch is already on, remove DuoRec from the list, reopen it from Applications, and grant access again." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "macOS 未允许此版本访问系统声音。若开关已打开，请在权限列表中移除 DuoRec，再从“应用程序”重新打开并授权。" } }
+      }
+    },
     "permissions.grant" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Grant Access" } },
