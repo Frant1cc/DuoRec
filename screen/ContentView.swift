@@ -5,6 +5,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var recorder: RecorderModel
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(spacing: 0) {
@@ -28,7 +29,7 @@ struct ContentView: View {
                 .padding(.vertical, 14)
                 .background(.bar)
         }
-        .frame(width: 460, height: 650)
+        .frame(width: 460, height: 690)
         .background(Color(nsColor: .windowBackgroundColor))
         .task {
             await recorder.recoverInterruptedRecordings()
@@ -256,6 +257,13 @@ struct ContentView: View {
             .tint(recorder.isRecording ? .red : .accentColor)
             .controlSize(.regular)
             .disabled(recorder.isTransitioning)
+
+            Button {
+                openWindow(id: "transcription")
+            } label: {
+                Label("transcription.open", systemImage: "text.badge.plus")
+            }
+            .buttonStyle(.bordered)
 
             if let lastRecordingURL = recorder.lastRecordingURL {
                 Button("recording.reveal_recent") {

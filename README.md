@@ -25,8 +25,8 @@
 
 ## 运行要求
 
-- macOS 15 或更高版本
-- Xcode 16 或更高版本
+- macOS 26 或更高版本
+- Xcode 26 或更高版本
 
 ## 首次运行
 
@@ -47,11 +47,18 @@
 - ScreenCaptureKit 双路采集
 - 系统声音 48 kHz / 128 kbps AAC
 - 麦克风 48 kHz / 64 kbps AAC
-- 停止后自动混音并输出 M4A
+- 停止后自动输出可播放的混音 M4A，并保留同名 `.tracks.mov` 双轨源文件
 - 文件名以录制时间开头，便于按名称排序
 - 麦克风增强可选择关闭、+6 dB 或 +12 dB
 - 合成失败时保留原始双轨文件
-- 不录屏、不转写、不上传网络
+- 可导入录音，用 macOS 本机普通话语音模型转写；DuoRec 双轨录音按时间线标明系统声音和麦克风，支持按来源筛选和复制
+- 不录屏、不上传录音；转写文字只保留在当前窗口，关闭后清除
+
+## 录音转文字
+
+在主窗口点击“导入录音转文字”，选择一份音频文件。首次使用时，macOS 可能需要下载普通话语音模型。导入 DuoRec 新录音的 M4A 时，应用会查找同一文件夹内的同名 `.tracks.mov` 双轨源文件，按时间顺序显示每段话，并标明“系统声音”或“麦克风”；也可以直接导入 `.tracks.mov`。顶部可筛选全部、系统声音或麦克风，选中任意文字按 ⌘C 或点击“复制选中”，也可复制当前筛选结果的全文。普通单轨音频仍可转写和修改文字。此功能不生成文字文件，也不保留转写历史；导入的录音不会被修改。
+
+如果移动或重命名 DuoRec 录音，请让 M4A 和同名 `.tracks.mov` 留在一起。旧版只保存了混音 M4A 的录音，无法准确区分这两路声音。
 
 ## 录音保存与中断恢复
 
@@ -72,6 +79,10 @@ xcrun swiftc -parse-as-library -module-cache-path .build/ModuleCache.noindex scr
 .build/recording-safety-checks "$PWD/.build"
 xcrun swiftc -parse-as-library -module-cache-path .build/ModuleCache.noindex screen/RecordingTermination.swift Tests/TerminationChecks.swift -o .build/termination-checks
 .build/termination-checks
+xcrun swiftc -parse-as-library -module-cache-path .build/ModuleCache.noindex screen/AudioCapture.swift screen/TranscriptTimeline.swift Tests/TranscriptTimelineChecks.swift -o .build/transcript-timeline-checks
+.build/transcript-timeline-checks
+xcrun swiftc -parse-as-library -module-cache-path .build/ModuleCache.noindex screen/TranscriptSelection.swift Tests/TranscriptSelectionChecks.swift -o .build/transcript-selection-checks
+.build/transcript-selection-checks
 ```
 
-覆盖：停止失败后的文件收尾、音频解码、并发与重复保存、空录音、单路声音、中断文件恢复，以及退出等待和失败取消。
+覆盖：停止失败后的文件收尾、音频解码、双轨来源标记和分轨提取、并发与重复保存、空录音、单路声音、中断文件恢复、按时间排列来源片段、文本变化后的选区安全，以及退出等待和失败取消。

@@ -390,6 +390,138 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording System Audio and Microphone" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在录制系统声音和麦克风" } }
       }
+    },
+    "transcription.cancel" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "取消" } }
+      }
+    },
+    "transcription.copy_all" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy All" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制全文" } }
+      }
+    },
+    "transcription.copy_hint" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Select any text to copy it, or press ⌘C." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "可选中任意一段文字复制，也可按 ⌘C。" } }
+      }
+    },
+    "transcription.copy_selected" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy Selection" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制选中" } }
+      }
+    },
+    "transcription.error.model_unavailable" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The Mandarin transcription model could not be prepared. Check your connection and try again." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法准备普通话转写模型。请检查网络连接后重试。" } }
+      }
+    },
+    "transcription.error.no_speech" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No speech was recognized in this recording." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有从这份录音中识别出语音。" } }
+      }
+    },
+    "transcription.error.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Transcription Unavailable" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "转写未完成" } }
+      }
+    },
+    "transcription.error.unreadable_file" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This audio file could not be read. Choose a playable recording and try again." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法读取这个音频文件。请选择可播放的录音后重试。" } }
+      }
+    },
+    "transcription.error.unsupported_language" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mandarin transcription is not available on this Mac." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这台 Mac 暂不支持普通话本机转写。" } }
+      }
+    },
+    "transcription.file_picker.choose" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入" } }
+      }
+    },
+    "transcription.file_picker.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose an Audio Recording" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择录音文件" } }
+      }
+    },
+    "transcription.filter.all" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "All" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全部" } }
+      }
+    },
+    "transcription.filter.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Audio Source" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "声音来源" } }
+      }
+    },
+    "transcription.import" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import Recording" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入录音" } }
+      }
+    },
+    "transcription.open" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Transcribe Recording" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入录音转文字" } }
+      }
+    },
+    "transcription.placeholder" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import a recording to see its transcription here." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入录音后，文字会显示在这里。" } }
+      }
+    },
+    "transcription.status.finished" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Transcription complete" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "转写完成" } }
+      }
+    },
+    "transcription.status.idle" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ready to import" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "等待导入" } }
+      }
+    },
+    "transcription.status.preparing" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preparing Mandarin transcription…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在准备普通话转写…" } }
+      }
+    },
+    "transcription.status.transcribing" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Transcribing…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在转写…" } }
+      }
+    },
+    "transcription.subtitle" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "DuoRec recordings show each source on a timeline. Text is cleared when this window closes." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "DuoRec 录音按时间线标明声音来源；关闭窗口后清除文字。" } }
+      }
+    },
+    "transcription.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording to Text" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音转文字" } }
+      }
     }
   },
   "version" : "1.0"

@@ -76,6 +76,20 @@ func writeAudio(_ writer: DualTrackAudioWriter, count: Int, microphone: Bool = t
         )
         precondition(finished == raw)
         try await assertDecodable(raw, minimumDuration: 1.9, tracks: 2)
+        let originalTracks = try await AVURLAsset(url: raw).loadTracks(withMediaType: .audio)
+        let sourceLabels = try await originalTracks.asyncMap { track in
+            let items = try await track.load(.metadata)
+            let comment = AVMetadataItem.metadataItems(from: items, filteredByIdentifier: .quickTimeMetadataComment).first
+            return try await comment?.load(.stringValue)
+        }
+        precondition(sourceLabels == ["duorec.system", "duorec.microphone"])
+        let separated = try await AudioTrackExtractor.extractTracks(
+            in: raw,
+            to: root.appendingPathComponent("separated")
+        )
+        precondition(separated.count == 2)
+        precondition(separated[0].source == .system && separated[1].source == .microphone)
+        for track in separated { try await assertDecodable(track.url, minimumDuration: 1.9) }
         try await AudioMixer.mixTracks(in: raw, to: mixed)
         try await assertDecodable(mixed, minimumDuration: 1.9)
         print("PASS: stop failure still saves decodable two-track audio and M4A")
@@ -130,5 +144,13 @@ func writeAudio(_ writer: DualTrackAudioWriter, count: Int, microphone: Bool = t
         let recoveredDuration = try await AVURLAsset(url: recovered).load(.duration).seconds
         print("PASS: SIGKILL recovery decoded \(recoveredDuration)s of 12s synthetic recording")
         print("All recording safety checks passed")
+    }
+}
+
+private extension Sequence {
+    func asyncMap<T>(_ transform: (Element) async throws -> T) async throws -> [T] {
+        var result: [T] = []
+        for element in self { result.append(try await transform(element)) }
+        return result
     }
 }

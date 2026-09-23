@@ -13,6 +13,13 @@ struct DuoRecApp: App {
         }
         .windowResizability(.contentSize)
 
+        Window("transcription.title", id: "transcription") {
+            TranscriptionView()
+                .environmentObject(recorder)
+        }
+        .defaultSize(width: 720, height: 560)
+        .defaultLaunchBehavior(.suppressed)
+
         MenuBarExtra {
             MenuBarRecorderView()
                 .environmentObject(recorder)

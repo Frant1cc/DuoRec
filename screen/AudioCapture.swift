@@ -116,6 +116,15 @@ final class DualTrackAudioWriter {
             ]
         )
 
+        let systemLabel = AVMutableMetadataItem()
+        systemLabel.identifier = .quickTimeMetadataComment
+        systemLabel.value = "duorec.system" as NSString
+        systemInput.metadata = [systemLabel]
+        let microphoneLabel = AVMutableMetadataItem()
+        microphoneLabel.identifier = .quickTimeMetadataComment
+        microphoneLabel.value = "duorec.microphone" as NSString
+        microphoneInput.metadata = [microphoneLabel]
+
         systemInput.expectsMediaDataInRealTime = true
         microphoneInput.expectsMediaDataInRealTime = true
 
@@ -268,6 +277,79 @@ enum AudioMixer {
             try? FileManager.default.removeItem(at: destinationURL)
             throw error
         }
+    }
+}
+
+// DualTrackAudioWriter adds system audio first and microphone audio second.
+// Exporting one track at a time keeps the speech recognizer from hearing the
+// other source while preserving the ordinary mixed M4A for playback.
+enum AudioTrackExtractor {
+    struct Track {
+        let source: AudioSource
+        let url: URL
+        let startTime: TimeInterval
+        let firstMediaTime: TimeInterval
+    }
+
+    static func companionURL(for mixedRecordingURL: URL) -> URL {
+        mixedRecordingURL.deletingPathExtension().appendingPathExtension("tracks.mov")
+    }
+
+    static func extractTracks(in sourceURL: URL, to directoryURL: URL) async throws -> [Track] {
+        let asset = AVURLAsset(url: sourceURL)
+        let tracks = try await asset.loadTracks(withMediaType: .audio)
+        guard !tracks.isEmpty else { throw AudioWriterError.missingTrack }
+        try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+
+        var extracted: [Track] = []
+        do {
+            for (index, track) in tracks.prefix(2).enumerated() {
+                let timeRange = try await track.load(.timeRange)
+                guard timeRange.duration.isNumeric, timeRange.duration.seconds > 0 else { continue }
+                let segments = try await track.load(.segments)
+                let firstMediaTime = segments.first(where: { !$0.isEmpty })?
+                    .timeMapping.target.start.seconds ?? timeRange.start.seconds
+                let source = await source(for: track, fallbackIndex: index)
+                let composition = AVMutableComposition()
+                guard let isolatedTrack = composition.addMutableTrack(
+                    withMediaType: .audio,
+                    preferredTrackID: kCMPersistentTrackID_Invalid
+                ) else { throw AudioWriterError.cannotAddInputs }
+                try isolatedTrack.insertTimeRange(timeRange, of: track, at: .zero)
+
+                let destination = directoryURL.appendingPathComponent("track-\(index).m4a")
+                guard let exporter = AVAssetExportSession(
+                    asset: composition,
+                    presetName: AVAssetExportPresetAppleM4A
+                ) else { throw AudioWriterError.exportUnavailable }
+                do {
+                    try await exporter.export(to: destination, as: .m4a)
+                } catch {
+                    try? FileManager.default.removeItem(at: destination)
+                    throw error
+                }
+                extracted.append(Track(
+                    source: source,
+                    url: destination,
+                    startTime: timeRange.start.seconds,
+                    firstMediaTime: firstMediaTime
+                ))
+            }
+            return extracted
+        } catch {
+            for track in extracted { try? FileManager.default.removeItem(at: track.url) }
+            throw error
+        }
+    }
+
+    private static func source(for track: AVAssetTrack, fallbackIndex: Int) async -> AudioSource {
+        if let metadata = try? await track.load(.metadata),
+           let item = AVMetadataItem.metadataItems(from: metadata, filteredByIdentifier: .quickTimeMetadataComment).first,
+           let label = try? await item.load(.stringValue) {
+            if label == "duorec.system" { return .system }
+            if label == "duorec.microphone" { return .microphone }
+        }
+        return fallbackIndex == 0 ? .system : .microphone
     }
 }
 
