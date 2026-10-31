@@ -32,7 +32,15 @@ It is a lightweight, native Mac app. Start recording from the window or menu bar
 
 ## Get started
 
-Requires **macOS 26+**. Build from source using a full installation of **Xcode 26+**.
+Requires **macOS 26+**. [Download the macOS app](https://github.com/Frant1cc/DuoRec/releases/latest) to use DuoRec without Xcode. The universal build includes Apple silicon and Intel binaries; transcription still requires a device that supports the system model.
+
+Download `DuoRec-1.0.0-macOS-universal.dmg`, open it, and drag `DuoRec.app` into **Applications**. Launch it from there. Alternatively, download the ZIP, extract it, and move the app into Applications.
+
+The current build is not Developer ID signed or notarized by Apple. If macOS blocks the first launch and you trust the download source, follow [Apple's instructions](https://support.apple.com/en-us/102445): open **System Settings > Privacy & Security > Open Anyway**.
+
+<details>
+<summary>Build from source (requires a full installation of Xcode 26+)</summary>
+
 
 ```sh
 git clone https://github.com/Frant1cc/DuoRec.git
@@ -43,6 +51,8 @@ open screen.xcodeproj
 In Xcode, select the `screen` scheme and `My Mac`. Under `Signing & Capabilities`, choose `Sign to Run Locally` or your own development team, then press **⌘R** to run.
 
 You can also [build from the command line](docs/DEVELOPMENT.md#使用命令行) (instructions in Chinese). The app interface supports Simplified Chinese and English.
+
+</details>
 
 ## Record in three steps
 

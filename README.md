@@ -32,7 +32,15 @@
 
 ## 开始使用
 
-需要 **macOS 26+**。目前通过源码构建，需安装完整的 **Xcode 26+**。
+需要 **macOS 26+**。可以直接[下载 macOS 应用](https://github.com/Frant1cc/DuoRec/releases/latest)，无需安装 Xcode。通用安装包包含 Apple 芯片与 Intel 版本；转写功能仍需设备支持对应的系统模型。
+
+下载 `DuoRec-1.0.0-macOS-universal.dmg`，打开后将 `DuoRec.app` 拖入“应用程序”，再从那里启动。也可下载 ZIP，解压后将 App 移至“应用程序”。
+
+当前安装包未使用 Apple Developer ID 签名和公证。首次打开若被系统拦截，仅在确认下载来源可信时，按 [Apple 的说明](https://support.apple.com/zh-cn/102445)，在“系统设置 > 隐私与安全性”中选择“仍要打开”。
+
+<details>
+<summary>从源码构建（需要完整安装 Xcode 26+）</summary>
+
 
 ```sh
 git clone https://github.com/Frant1cc/DuoRec.git
@@ -43,6 +51,8 @@ open screen.xcodeproj
 在 Xcode 中选择 `screen` Scheme 和 `My Mac`，在 `Signing & Capabilities` 中选择 `Sign to Run Locally` 或自己的开发团队，按 **⌘R** 运行。
 
 也可以使用[命令行构建](docs/DEVELOPMENT.md#使用命令行)。界面支持简体中文和英语。
+
+</details>
 
 ## 三步录下声音
 

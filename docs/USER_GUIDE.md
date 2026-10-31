@@ -2,6 +2,16 @@
 
 [← 返回 DuoRec](../README.md)
 
+## 下载安装
+
+1. 从 [GitHub Releases](https://github.com/Frant1cc/DuoRec/releases/latest) 下载 macOS 通用版 DMG，需要 macOS 26 或更高版本。
+2. 打开 DMG，将 `DuoRec.app` 拖入“应用程序”。也可下载 ZIP，解压后将 App 移至“应用程序”。
+3. 从“应用程序”启动 DuoRec，再授予录音所需权限。
+
+当前安装包使用临时签名，未经过 Apple Developer ID 签名和公证。如果首次打开被系统拦截，仅在确认来源可信时，先尝试打开 App，再在“系统设置 > 隐私与安全性”中选择“仍要打开”，详见 [Apple 的说明](https://support.apple.com/zh-cn/102445)。
+
+通用包包含 Apple 芯片与 Intel 二进制文件。本机转写取决于设备与系统模型支持情况，首次使用可能需要联网下载模型。
+
 ## 开始录音
 
 1. 启动 DuoRec，点击“授予权限”，按系统提示允许屏幕与系统音频录制、麦克风访问。
