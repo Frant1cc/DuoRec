@@ -3,8 +3,8 @@
   "strings" : {
     "error.saved_raw_recording" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "The mixed recording could not be saved. A playable original recording has been saved; use Show in Finder to open it." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "混音保存失败，已保存可播放的原始录音。请点击“在访达中显示”查看。" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The MP4 could not be saved. A playable original recording has been saved; use Show in Finder to open it." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "MP4 保存失败，已保存可播放的原始录音。请点击“在访达中显示”查看。" } }
       }
     },
     "error.recording_retained" : {
@@ -81,8 +81,8 @@
     },
     "error.audio_writer.export_unavailable" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "The system couldn’t create an M4A export task." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "系统无法创建 M4A 导出任务。" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The system couldn’t create an audio export task." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "系统无法创建音频导出任务。" } }
       }
     },
     "error.audio_writer.finish_failed" : {

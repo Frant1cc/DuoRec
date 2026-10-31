@@ -373,7 +373,7 @@ final class RecorderModel: ObservableObject {
                 stopping: { try await stream.stopCapture() },
                 finishing: { try await output.finish() }
             )
-            try await exportRecording(rawURL)
+            try await saveRecordingFile(rawURL)
             NSSound(named: "Glass")?.play()
             return true
         } catch {
@@ -389,28 +389,15 @@ final class RecorderModel: ObservableObject {
         }
     }
 
-    private func exportRecording(_ rawURL: URL) async throws {
-        let destination = try finalURL(for: rawURL)
-        try await AudioMixer.mixTracks(in: rawURL, to: destination)
-        do {
-            try moveRecording(
-                at: rawURL,
-                to: AudioTrackExtractor.companionURL(for: destination)
-            )
-        } catch {
-            try? FileManager.default.removeItem(at: destination)
-            throw error
-        }
+    private func saveRecordingFile(_ rawURL: URL) async throws {
+        let destination = finalURL()
+        try await AudioRecordingFile.save(rawURL, to: destination)
         lastRecordingURL = destination
     }
 
     private func preserveReadableRecording(_ rawURL: URL) async -> Bool {
         do {
-            let asset = AVURLAsset(url: rawURL)
-            let tracks = try await asset.loadTracks(withMediaType: .audio)
-            let duration = try await asset.load(.duration)
-            guard !tracks.isEmpty, duration.isNumeric, duration.seconds > 0 else { return false }
-            lastRecordingURL = try preserveRawRecording(rawURL)
+            lastRecordingURL = try await preserveRawRecording(rawURL)
             return true
         } catch {
             return false
@@ -450,7 +437,7 @@ final class RecorderModel: ObservableObject {
             try beginAccessingOutputFolder()
             var failed = false
             for file in files {
-                do { try await exportRecording(file) }
+                do { try await saveRecordingFile(file) }
                 catch { failed = true }
             }
             hasRecoveryFiles = failed
@@ -550,7 +537,7 @@ final class RecorderModel: ObservableObject {
         return support
     }
 
-    private func finalURL(for rawURL: URL) throws -> URL {
+    private func finalURL() -> URL {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd HH-mm-ss"
@@ -558,17 +545,15 @@ final class RecorderModel: ObservableObject {
         var suffix = 1
         while true {
             let name = suffix == 1 ? baseName : "\(baseName) \(suffix)"
-            let candidate = outputFolderURL.appendingPathComponent(name).appendingPathExtension("m4a")
-            let companion = AudioTrackExtractor.companionURL(for: candidate)
-            if !FileManager.default.fileExists(atPath: candidate.path),
-               !FileManager.default.fileExists(atPath: companion.path) {
+            let candidate = outputFolderURL.appendingPathComponent(name).appendingPathExtension("mp4")
+            if !FileManager.default.fileExists(atPath: candidate.path) {
                 return candidate
             }
             suffix += 1
         }
     }
 
-    private func preserveRawRecording(_ rawURL: URL) throws -> URL {
+    private func preserveRawRecording(_ rawURL: URL) async throws -> URL {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH-mm-ss"
         let destination = uniqueURL(
@@ -576,27 +561,8 @@ final class RecorderModel: ObservableObject {
             baseName: "\(formatter.string(from: Date())) DuoRec - \(String(localized: "recording.raw_tracks_filename"))",
             extension: rawURL.pathExtension
         )
-        try moveRecording(at: rawURL, to: destination)
+        try await AudioRecordingFile.preserve(rawURL, to: destination)
         return destination
-    }
-
-    private func moveRecording(at source: URL, to destination: URL) throws {
-        do {
-            try FileManager.default.moveItem(at: source, to: destination)
-        } catch let moveError {
-            // A chosen output folder can be on another volume. Copy the complete
-            // recording before removing the recoverable source file.
-            guard !FileManager.default.fileExists(atPath: destination.path) else {
-                throw moveError
-            }
-            do {
-                try FileManager.default.copyItem(at: source, to: destination)
-                try FileManager.default.removeItem(at: source)
-            } catch {
-                try? FileManager.default.removeItem(at: destination)
-                throw error
-            }
-        }
     }
 
     private static func defaultOutputFolderURL() -> URL {
@@ -668,7 +634,7 @@ final class RecorderModel: ObservableObject {
         if let captureOutput {
             do {
                 let rawURL = try await captureOutput.finish()
-                do { try await exportRecording(rawURL) }
+                do { try await saveRecordingFile(rawURL) }
                 catch {
                     lastSaveSucceeded = await preserveReadableRecording(rawURL)
                     hasRecoveryFiles = hasRecoveryFiles || !lastSaveSucceeded

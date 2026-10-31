@@ -72,14 +72,7 @@ final class TranscriptionModel: ObservableObject {
             }
 
             do {
-                let companion = AudioTrackExtractor.companionURL(for: url)
-                let isDuoRecTrackFile = url.lastPathComponent.hasSuffix(".tracks.mov")
-                let dualTrackURL: URL? = isDuoRecTrackFile
-                    ? url
-                    : (url.pathExtension.lowercased() == "m4a" && FileManager.default.fileExists(atPath: companion.path)
-                       ? companion : nil)
-
-                if let dualTrackURL {
+                if let dualTrackURL = try await AudioTrackExtractor.transcriptionSourceURL(for: url) {
                     usesSourceTimeline = true
                     try await transcribeDualTrackFile(dualTrackURL, generation: currentGeneration)
                 } else {
