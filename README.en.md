@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="screen/Assets.xcassets/AppIcon.appiconset/DuoRecIcon-256.png" alt="DuoRec app icon" width="112" height="112">
+  <img src="DuoRec/Assets.xcassets/AppIcon.appiconset/DuoRecIcon-256.png" alt="DuoRec app icon" width="112" height="112">
 </p>
 
 <h1 align="center">DuoRec</h1>
@@ -45,10 +45,10 @@ The current build is not Developer ID signed or notarized by Apple. If macOS blo
 ```sh
 git clone https://github.com/Frant1cc/DuoRec.git
 cd DuoRec
-open screen.xcodeproj
+open DuoRec.xcodeproj
 ```
 
-In Xcode, select the `screen` scheme and `My Mac`. Under `Signing & Capabilities`, choose `Sign to Run Locally` or your own development team, then press **⌘R** to run.
+In Xcode, select the `DuoRec` scheme and `My Mac`. Under `Signing & Capabilities`, choose `Sign to Run Locally` or your own development team, then press **⌘R** to run.
 
 You can also [build from the command line](docs/DEVELOPMENT.md#使用命令行) (instructions in Chinese). The app interface supports Simplified Chinese and English.
 

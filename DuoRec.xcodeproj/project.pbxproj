@@ -11,9 +11,9 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		26A390C73053FDED0059C793 /* screen */ = {
+		26A390C73053FDED0059C793 /* DuoRec */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = screen;
+			path = DuoRec;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -32,7 +32,7 @@
 		26A390BC3053FDED0059C793 = {
 			isa = PBXGroup;
 			children = (
-				26A390C73053FDED0059C793 /* screen */,
+				26A390C73053FDED0059C793 /* DuoRec */,
 				26A390C63053FDED0059C793 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		26A390C43053FDED0059C793 /* screen */ = {
+		26A390C43053FDED0059C793 /* DuoRec */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 26A390D03053FDED0059C793 /* Build configuration list for PBXNativeTarget "screen" */;
+			buildConfigurationList = 26A390D03053FDED0059C793 /* Build configuration list for PBXNativeTarget "DuoRec" */;
 			buildPhases = (
 				26A390C13053FDED0059C793 /* Sources */,
 				26A390C23053FDED0059C793 /* Frameworks */,
@@ -61,12 +61,12 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				26A390C73053FDED0059C793 /* screen */,
+				26A390C73053FDED0059C793 /* DuoRec */,
 			);
-			name = screen;
+			name = DuoRec;
 			packageProductDependencies = (
 			);
-			productName = screen;
+			productName = DuoRec;
 			productReference = 26A390C53053FDED0059C793 /* DuoRec.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 26A390C03053FDED0059C793 /* Build configuration list for PBXProject "screen" */;
+			buildConfigurationList = 26A390C03053FDED0059C793 /* Build configuration list for PBXProject "DuoRec" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -100,7 +100,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				26A390C43053FDED0059C793 /* screen */,
+				26A390C43053FDED0059C793 /* DuoRec */,
 			);
 		};
 /* End PBXProject section */
@@ -245,7 +245,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = screen/screen.entitlements;
+				CODE_SIGN_ENTITLEMENTS = DuoRec/DuoRec.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
@@ -288,7 +288,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = screen/screen.entitlements;
+				CODE_SIGN_ENTITLEMENTS = DuoRec/DuoRec.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
@@ -329,7 +329,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		26A390C03053FDED0059C793 /* Build configuration list for PBXProject "screen" */ = {
+		26A390C03053FDED0059C793 /* Build configuration list for PBXProject "DuoRec" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				26A390CE3053FDED0059C793 /* Debug */,
@@ -338,7 +338,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		26A390D03053FDED0059C793 /* Build configuration list for PBXNativeTarget "screen" */ = {
+		26A390D03053FDED0059C793 /* Build configuration list for PBXNativeTarget "DuoRec" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				26A390D13053FDED0059C793 /* Debug */,

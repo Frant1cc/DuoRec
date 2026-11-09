@@ -28,3 +28,6 @@ build/
 .env
 .env.*
 !.env.example
+
+# Local regression checks
+/Tests/

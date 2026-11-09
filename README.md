@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="screen/Assets.xcassets/AppIcon.appiconset/DuoRecIcon-256.png" alt="DuoRec 应用图标" width="112" height="112">
+  <img src="DuoRec/Assets.xcassets/AppIcon.appiconset/DuoRecIcon-256.png" alt="DuoRec 应用图标" width="112" height="112">
 </p>
 
 <h1 align="center">DuoRec</h1>
@@ -45,10 +45,10 @@
 ```sh
 git clone https://github.com/Frant1cc/DuoRec.git
 cd DuoRec
-open screen.xcodeproj
+open DuoRec.xcodeproj
 ```
 
-在 Xcode 中选择 `screen` Scheme 和 `My Mac`，在 `Signing & Capabilities` 中选择 `Sign to Run Locally` 或自己的开发团队，按 **⌘R** 运行。
+在 Xcode 中选择 `DuoRec` Scheme 和 `My Mac`，在 `Signing & Capabilities` 中选择 `Sign to Run Locally` 或自己的开发团队，按 **⌘R** 运行。
 
 也可以使用[命令行构建](docs/DEVELOPMENT.md#使用命令行)。界面支持简体中文和英语。
 
