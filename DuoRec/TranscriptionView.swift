@@ -1,7 +1,6 @@
 import AppKit
 import AVFoundation
 import Combine
-import Speech
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -24,11 +23,22 @@ final class TranscriptionModel: ObservableObject {
     @Published var errorMessage: String?
 
     private var task: Task<Void, Never>?
-    private var analyzer: SpeechAnalyzer?
+    let models: WhisperModelStore
+    private let engine: any WhisperRecognizing
+    private var cancellation = WhisperCancellation()
+    private var activeModel: WhisperModel = .largeV3Turbo
+    private var activeLanguage: WhisperLanguage = .automatic
+    private var trackID = UUID()
+    @Published private(set) var progress: Double = 0
+    @Published private(set) var runningModelName: String?
     @Published private(set) var documentID = UUID()
     private let sourceResolver: (URL) async throws -> URL?
 
-    init(sourceResolver: @escaping (URL) async throws -> URL? = AudioTrackExtractor.transcriptionSourceURL) {
+    init(models: WhisperModelStore? = nil,
+         engine: (any WhisperRecognizing)? = nil,
+         sourceResolver: @escaping (URL) async throws -> URL? = AudioTrackExtractor.transcriptionSourceURL) {
+        self.models = models ?? WhisperModelStore()
+        self.engine = engine ?? WhisperTranscriber()
         self.sourceResolver = sourceResolver
     }
 
@@ -51,10 +61,9 @@ final class TranscriptionModel: ObservableObject {
         documentID = UUID()
         task?.cancel()
         task = nil
-        if let analyzer {
-            Task { await analyzer.cancelAndFinishNow() }
-        }
-        analyzer = nil
+        cancellation.cancel()
+        progress = 0
+        runningModelName = nil
         phase = .idle
         text = ""
         filter = .all
@@ -72,8 +81,14 @@ final class TranscriptionModel: ObservableObject {
         documentID = currentGeneration
         fileName = url.lastPathComponent
         phase = .preparing
+        cancellation = WhisperCancellation()
+        let runCancellation = cancellation
+        activeModel = models.selectedModel
+        activeLanguage = models.language
+        runningModelName = activeModel.rawValue
 
         let task = Task {
+            defer { runCancellation.cancel() }
             let hasFileScope = url.startAccessingSecurityScopedResource()
             let isSavedRecording = url.deletingLastPathComponent().standardizedFileURL == outputFolderURL.standardizedFileURL
             let hasFolderScope = isSavedRecording && outputFolderURL.startAccessingSecurityScopedResource()
@@ -104,7 +119,6 @@ final class TranscriptionModel: ObservableObject {
             }
 
             guard documentID == currentGeneration else { return }
-            analyzer = nil
             self.task = nil
         }
         self.task = task
@@ -119,7 +133,7 @@ final class TranscriptionModel: ObservableObject {
 
         let tracks = try await AudioTrackExtractor.extractTracks(in: url, to: temporaryFolder)
         try requireCurrentGeneration(currentGeneration)
-        guard !tracks.isEmpty else { throw TranscriptionError.unreadableFile }
+        guard !tracks.isEmpty else { throw WhisperError.unreadableAudio }
         for track in tracks {
             try requireCurrentGeneration(currentGeneration)
             _ = try await transcribeAudioFile(
@@ -140,82 +154,35 @@ final class TranscriptionModel: ObservableObject {
         generation currentGeneration: UUID
     ) async throws -> [TranscriptSegment] {
         try requireCurrentGeneration(currentGeneration)
-        guard SpeechTranscriber.isAvailable,
-              let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "zh_CN")) else {
-            throw TranscriptionError.unsupportedLanguage
-        }
-
-        let transcriber = SpeechTranscriber(locale: locale, preset: .timeIndexedTranscriptionWithAlternatives)
-        let modules: [any SpeechModule] = [transcriber]
-        try requireCurrentGeneration(currentGeneration)
-        if await AssetInventory.status(forModules: modules) != .installed {
-            try requireCurrentGeneration(currentGeneration)
-            guard let installation = try await AssetInventory.assetInstallationRequest(supporting: modules) else {
-                throw TranscriptionError.modelUnavailable
-            }
-            try requireCurrentGeneration(currentGeneration)
-            try await installation.downloadAndInstall()
-        }
-        try requireCurrentGeneration(currentGeneration)
-
-        let audioFile: AVAudioFile
-        do {
-            audioFile = try AVAudioFile(forReading: url)
-        } catch {
-            throw TranscriptionError.unreadableFile
-        }
-
-        let analyzer = SpeechAnalyzer(modules: modules)
-        self.analyzer = analyzer
+        guard models.installed.contains(activeModel) else { throw WhisperError.modelMissing }
+        let modelURL = models.modelURL(for: activeModel)
+        let currentTrackID = UUID()
+        trackID = currentTrackID
         phase = .transcribing
-
-        let results = Task { @MainActor in
-            var collected: [TranscriptSegment] = []
-            for try await result in transcriber.results {
-                try requireCurrentGeneration(currentGeneration)
-                let words = String(result.text.characters)
-                guard !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
-                let relativeStart = result.range.start.seconds
-                let startTime = max(
-                    firstMediaTime,
-                    (relativeStart.isFinite ? relativeStart : 0) + timeOffset
-                )
-                let relativeEnd = result.range.end.seconds
-                let safeRelativeEnd = relativeEnd.isFinite
-                    ? relativeEnd
-                    : (relativeStart.isFinite ? relativeStart : 0)
-                let segment = TranscriptSegment(
-                    source: source,
-                    startTime: startTime,
-                    endTime: max(startTime, safeRelativeEnd + timeOffset),
-                    text: words
-                )
-                collected.append(segment)
-                if documentID == currentGeneration {
-                    if source != nil {
-                        segments.append(segment)
-                        segments.sort { $0.startTime < $1.startTime }
-                    } else {
-                        text += words
-                    }
-                }
+        progress = 0
+        let pieces = try await engine.transcribe(
+            url: url, modelURL: modelURL, language: activeLanguage, cancellation: cancellation
+        ) { [weak self] value in
+            Task { @MainActor [weak self] in
+                guard let self, self.documentID == currentGeneration,
+                      self.trackID == currentTrackID, self.isWorking else { return }
+                self.progress = max(self.progress, min(1, value))
             }
-            return collected
         }
-
-        do {
-            if let lastSample = try await analyzer.analyzeSequence(from: audioFile) {
-                try requireCurrentGeneration(currentGeneration)
-                try await analyzer.finalizeAndFinish(through: lastSample)
-            } else {
-                await analyzer.cancelAndFinishNow()
-            }
-            return try await results.value
-        } catch {
-            results.cancel()
-            await analyzer.cancelAndFinishNow()
-            throw error
+        try requireCurrentGeneration(currentGeneration)
+        let collected = pieces.map { piece in
+            let start = max(firstMediaTime, piece.start + timeOffset)
+            return TranscriptSegment(source: source, startTime: start,
+                                     endTime: max(start, piece.end + timeOffset), text: piece.text)
         }
+        if source != nil {
+            segments.append(contentsOf: collected)
+            segments.sort { $0.startTime < $1.startTime }
+        } else {
+            text = collected.map(\.text).joined()
+        }
+        progress = 1
+        return collected
     }
 
     private func requireCurrentGeneration(_ expected: UUID) throws {
@@ -224,23 +191,10 @@ final class TranscriptionModel: ObservableObject {
     }
 }
 
-private enum TranscriptionError: LocalizedError {
-    case unsupportedLanguage
-    case modelUnavailable
-    case unreadableFile
-
-    var errorDescription: String? {
-        switch self {
-        case .unsupportedLanguage: String(localized: "transcription.error.unsupported_language")
-        case .modelUnavailable: String(localized: "transcription.error.model_unavailable")
-        case .unreadableFile: String(localized: "transcription.error.unreadable_file")
-        }
-    }
-}
-
 struct TranscriptionView: View {
     @EnvironmentObject private var recorder: RecorderModel
     @ObservedObject var model: TranscriptionModel
+    @ObservedObject var models: WhisperModelStore
     @State private var selectedText = ""
     @State private var copyFeedback: CopyFeedback?
 
@@ -250,12 +204,41 @@ struct TranscriptionView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
+            HStack {
+                Image(systemName: "waveform")
+                Picker("whisper.models", selection: Binding(
+                    get: { models.selectedModel },
+                    set: { models.select($0) }
+                )) {
+                    ForEach(WhisperModel.allCases) { whisperModel in
+                        Text(verbatim: whisperModel.rawValue).tag(whisperModel)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .fixedSize()
+                .disabled(model.isWorking)
+                Text(LocalizedStringKey(models.language.titleKey))
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+            }
+
+            if !models.isReady && !model.isWorking {
+                Label("whisper.model_required", systemImage: "arrow.down.circle")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+
             HStack(spacing: 10) {
                 if model.isWorking {
                     ProgressView().controlSize(.small)
                     Text(model.phase == .preparing
                          ? "transcription.status.preparing"
                          : "transcription.status.transcribing")
+                    if model.phase == .transcribing {
+                        Text(model.progress, format: .percent.precision(.fractionLength(0)))
+                            .monospacedDigit()
+                            .help("whisper.track_progress")
+                    }
                 } else if model.phase == .finished {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
@@ -355,7 +338,7 @@ struct TranscriptionView: View {
                         .labelStyle(.titleAndIcon)
                 }
                 .help("transcription.import_help")
-                .disabled(model.isWorking)
+                .disabled(model.isWorking || !models.isReady)
 
                 Button(action: copySelected) {
                     Label("transcription.copy", systemImage: "doc.on.doc")

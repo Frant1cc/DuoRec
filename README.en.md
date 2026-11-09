@@ -5,7 +5,7 @@
 <h1 align="center">DuoRec</h1>
 
 <p align="center"><strong>Your Mac's audio. Your voice. Recorded together.</strong></p>
-<p align="center">System audio + microphone recording for macOS · Single-file MP4 · On-device Mandarin transcription</p>
+<p align="center">System audio + microphone recording for macOS · Single-file MP4 · On-device Whisper transcription</p>
 
 <p align="center"><a href="README.md">简体中文</a> · English</p>
 
@@ -27,12 +27,12 @@ It is a lightweight, native Mac app. Start recording from the window or menu bar
 | --- | --- |
 | **Records both audio sources** | Capture system audio and your chosen microphone together. Separate live meters help you check both inputs. |
 | **One MP4 for playback and transcription** | Listen to a mix of both inputs, or transcribe the independent source tracks. Move or rename the file without a companion file. |
-| **Organizes text by source** | View Mandarin transcripts in time order, labeled “System Audio” and “Microphone.” Filter, select, and copy the text you need. |
+| **Organizes text by source** | View Whisper transcripts in time order, labeled “System Audio” and “Microphone.” Filter, select, and copy the text you need. |
 | **Saves locally and attempts recovery** | Choose a save folder, let the app finish saving before it quits, and attempt recovery after an unexpected interruption. |
 
 ## Get started
 
-Requires **macOS 26+**. [Download the macOS app](https://github.com/Frant1cc/DuoRec/releases/latest) to use DuoRec without Xcode. The universal build includes Apple silicon and Intel binaries; transcription still requires a device that supports the system model.
+Requires **macOS 26+**. [Download the macOS app](https://github.com/Frant1cc/DuoRec/releases/latest) to use DuoRec without Xcode. The universal build includes Apple silicon and Intel binaries; Whisper uses Metal acceleration on Apple silicon and CPU inference on Intel Macs.
 
 Download `DuoRec-1.0.0-macOS-universal.dmg`, open it, and drag `DuoRec.app` into **Applications**. Launch it from there. Alternatively, download the ZIP, extract it, and move the app into Applications.
 
@@ -68,9 +68,11 @@ Use headphones to keep speaker audio from being recorded again through your micr
 
 Select **Transcription** in the sidebar, click **Import Audio**, and choose your recorded MP4 to get a transcript in time order, labeled by audio source. The app transcribes the source tracks separately and skips the mix to avoid duplicate text. Filter by **System Audio** or **Microphone**, then copy the passages you need for meeting notes, interview write-ups, or study notes.
 
-You can also import ordinary single-track audio. Transcription currently supports **Mandarin Chinese**, even when the interface is in English. Your device must support the required macOS model, which may need to be downloaded on first use. Source labels distinguish the two inputs; they do not identify different speakers within the same input.
+First open **Language Recognition** in the sidebar, then select and download one of four multilingual Whisper models: **large-v3, large-v3-turbo, small, or medium**. Each row shows its disk size, download button, and download progress. Downloaded models can be removed to free space. The default is large-v3-turbo. You can also import the matching original ggml model file. Transcription uses local Whisper only, with no API key.
 
-Switching between Recording and Transcription keeps the current task and text. Transcript history is not saved; copy any text you need before closing the main window. Older M4A recordings with matching source files can still be imported; see the [user guide](docs/USER_GUIDE.md) (Chinese) for details.
+Choose Automatic, Chinese, or English for the audio language. Ordinary single-track audio is supported too. Source labels distinguish the two inputs; they do not identify different speakers within the same input.
+
+Switching between Recording, Transcription, and Language Recognition keeps the current task and text. Transcript history is not saved; copy any text you need before closing the main window. Older M4A recordings with matching source files can still be imported; see the [user guide](docs/USER_GUIDE.md) (Chinese) for details.
 
 ## Learn more
 
@@ -78,4 +80,4 @@ Switching between Recording and Transcription keeps the current task and text. T
 - [Build & development](docs/DEVELOPMENT.md) (Chinese): full build instructions, requirements, and regression checks.
 - [Report an issue](https://github.com/Frant1cc/DuoRec/issues): feedback and pull requests are welcome.
 
-DuoRec is open source under the [MIT License](LICENSE).
+DuoRec is open source under the [MIT License](LICENSE). Speech recognition uses [whisper.cpp](https://github.com/ggml-org/whisper.cpp) and OpenAI Whisper; see [WhisperNotices.txt](DuoRec/WhisperNotices.txt).

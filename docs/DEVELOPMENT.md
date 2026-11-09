@@ -7,9 +7,9 @@
 - macOS 26 或更高版本。
 - 从源码构建需要完整安装 Xcode 26 或更高版本；仅安装 Command Line Tools 不够。
 - 录音需要“屏幕与系统音频录制”和“麦克风”权限。
-- 转写依赖设备支持的 macOS SpeechTranscriber 与普通话模型。首次使用可能需要联网下载模型；无法使用模型时仍可录音。
+- 转写仅使用 whisper.cpp 与多语言 Whisper 模型，提供 large-v3、large-v3-turbo、small、medium。模型由应用从 Hugging Face 下载并校验，也可导入本地原版 ggml 文件；无需 API Key。
 
-录音与转写使用 Apple 系统框架，应用内更新使用 Sparkle 2。首次构建需要联网获取 Swift Package 依赖。当前已在 Xcode 26.6 下验证构建。
+录音使用 Apple 系统框架；转写通过本地 Swift Package `Packages/WhisperCpp` 接入官方 whisper.cpp v1.9.2 XCFramework（固定 SHA-256，包含 arm64 与 x86_64）；应用内更新使用 Sparkle 2。首次构建需要联网获取 Swift Package 依赖。当前已在 Xcode 26.6 下验证构建。
 
 ## 从源码构建
 
@@ -23,6 +23,10 @@
 4. 按 ⌘R 构建并运行 DuoRec。
 
 项目中的工程和 Scheme 名称为 `DuoRec`，生成的应用名称为 `DuoRec.app`。
+
+模型文件与安装逻辑在 `WhisperModels.swift`，下载任务在 `WhisperDownloader.swift`，Whisper C API、音频解码与后台推理在 `WhisperTranscriber.swift`。模型文件先暂存并验证大小及 SHA-256，成功后才安装；文件长度通过 FileHandle 读取，避免 URL.resourceValues 对持续增长文件的 fileSize 缓存导致误判；下载文件校验失败后保留，支持重新校验。下载使用专用 URLSessionDataDelegate，将数据流写入稳定的 `.bin.partial` 文件；暂停和网络错误保留数据，重启时扫描缓存，继续时从实际文件长度发出 Range 请求并校验 Content-Range。服务器忽略 Range 时先截断再重下，避免错误拼接。连接、传输与暂停分别呈现，无数据请求超时为 30 秒。推理前将音频转换为 16 kHz 单声道 Float32 PCM 并映射读取，结束或取消后清理。Apple 芯片优先使用 Metal，初始化失败时回退到 Whisper CPU。
+
+运行 `sh Checks/run.sh` 可验证原有状态机与新的 Whisper 缓存、导入错误、取消、任务隔离，以及本机 HTTP 服务上的真实下载进度、持久化暂停、重建下载器后的续传、重定向、Range 异常、响应错误和无数据超时；首次检查会解析引擎构建依赖，不下载识别模型。
 
 状态所有权、允许的操作、异步取消规则及回归检查见[应用状态机清单](STATE_MACHINES.md)。
 

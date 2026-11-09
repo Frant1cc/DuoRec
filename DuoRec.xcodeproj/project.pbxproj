@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		D00100010000000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = D00100010000000000000002 /* Sparkle */; };
+		D00200010000000000000001 /* WhisperCpp in Frameworks */ = {isa = PBXBuildFile; productRef = D00200010000000000000002 /* WhisperCpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D00100010000000000000001 /* Sparkle in Frameworks */,
+				D00200010000000000000001 /* WhisperCpp in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -82,6 +84,7 @@
 			name = DuoRec;
 			packageProductDependencies = (
 				D00100010000000000000002 /* Sparkle */,
+				D00200010000000000000002 /* WhisperCpp */,
 			);
 			productName = DuoRec;
 			productReference = 26A390C53053FDED0059C793 /* DuoRec.app */;
@@ -113,7 +116,7 @@
 			mainGroup = 26A390BC3053FDED0059C793;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			packageReferences = (D00100010000000000000003 /* Sparkle */,);
+			packageReferences = (D00100010000000000000003 /* Sparkle */, D00200010000000000000003 /* WhisperCpp */,);
 			productRefGroup = 26A390C63053FDED0059C793 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -379,7 +382,19 @@
 		};
 /* End XCRemoteSwiftPackageReference section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		D00200010000000000000003 /* WhisperCpp */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/WhisperCpp;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		D00200010000000000000002 /* WhisperCpp */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00200010000000000000003 /* WhisperCpp */;
+			productName = WhisperCpp;
+		};
 		D00100010000000000000002 /* Sparkle */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D00100010000000000000003 /* Sparkle */;

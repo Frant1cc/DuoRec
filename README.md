@@ -5,7 +5,7 @@
 <h1 align="center">DuoRec</h1>
 
 <p align="center"><strong>电脑的声音，你的声音，一起记下来。</strong></p>
-<p align="center">macOS 双路录音 · 单文件 MP4 · 本机普通话转写</p>
+<p align="center">macOS 双路录音 · 单文件 MP4 · 本机 Whisper 多语言转写</p>
 
 <p align="center">简体中文 · <a href="README.en.md">English</a></p>
 
@@ -27,12 +27,12 @@
 | --- | --- |
 | **同时录两路声音** | 系统声音与所选麦克风一起录，实时电平方便确认两路输入。 |
 | **一个 MP4，回听与转写都保留** | 默认播放两路声音的混音，独立来源音轨供分开转写；移动或改名无需配套文件。 |
-| **按来源整理文字** | 普通话转写按时间排列，标明“系统声音”和“麦克风”，可筛选、选中和复制。 |
+| **按来源整理文字** | Whisper 转写按时间排列，标明“系统声音”和“麦克风”，可筛选、选中和复制。 |
 | **本机保存与恢复** | 自选保存位置，退出时等待保存，意外中断后尝试恢复。 |
 
 ## 开始使用
 
-需要 **macOS 26+**。可以直接[下载 macOS 应用](https://github.com/Frant1cc/DuoRec/releases/latest)，无需安装 Xcode。通用安装包包含 Apple 芯片与 Intel 版本；转写功能仍需设备支持对应的系统模型。
+需要 **macOS 26+**。可以直接[下载 macOS 应用](https://github.com/Frant1cc/DuoRec/releases/latest)，无需安装 Xcode。通用安装包包含 Apple 芯片与 Intel 版本；Whisper 在 Apple 芯片上优先使用 Metal 加速，Intel 使用 CPU。
 
 下载 `DuoRec-1.0.0-macOS-universal.dmg`，打开后将 `DuoRec.app` 拖入“应用程序”，再从那里启动。也可下载 ZIP，解压后将 App 移至“应用程序”。
 
@@ -68,9 +68,11 @@ open DuoRec.xcodeproj
 
 在侧边栏选择 **“转写”**，点击 **“导入音频”**，选择录制的 MP4，即可得到按时间排列、带声音来源标记的文字。应用分别识别来源音轨，跳过混音轨，避免重复转写。筛选“系统声音”或“麦克风”，复制需要的片段，方便整理会议记录、访谈内容和学习笔记。
 
-也支持导入普通单轨音频。当前识别语言为**普通话**，首次使用可能需要 macOS 下载模型，设备需支持该模型。来源标记用于区分两路输入，不区分同一路声音中的不同说话人。
+首次使用请先打开侧边栏 **“语言识别”**，选择并下载 **large-v3、large-v3-turbo、small、medium** 中的一个多语言 Whisper 模型。每个模型都显示磁盘大小、下载按钮与下载进度；下载后可删除以释放空间。默认选择 large-v3-turbo，也可导入已有的对应原版 ggml 模型文件。转写仅使用本地 Whisper，无需 API Key。
 
-切换“录音”和“转写”页面会保留转写任务与文字；转写文字不保留历史，关闭主窗口前请复制所需内容。旧版 M4A 与同名双轨源文件仍可导入，详见[使用指南](docs/USER_GUIDE.md)。
+录音语言可选“自动识别”“中文”或“英语”。也支持普通单轨音频。来源标记用于区分两路输入，不区分同一路声音中的不同说话人。
+
+切换“录音”“转写”和“语言识别”页面会保留转写任务与文字；转写文字不保留历史，关闭主窗口前请复制所需内容。旧版 M4A 与同名双轨源文件仍可导入，详见[使用指南](docs/USER_GUIDE.md)。
 
 ## 了解更多
 
@@ -78,4 +80,4 @@ open DuoRec.xcodeproj
 - [构建与开发](docs/DEVELOPMENT.md)：完整构建步骤、环境要求与回归检查。
 - [反馈问题](https://github.com/Frant1cc/DuoRec/issues)：欢迎反馈使用体验或提交 Pull Request。
 
-DuoRec 使用 [MIT License](LICENSE) 开源。
+DuoRec 使用 [MIT License](LICENSE) 开源。语音识别使用 [whisper.cpp](https://github.com/ggml-org/whisper.cpp) 和 OpenAI Whisper；许可声明见 [WhisperNotices.txt](DuoRec/WhisperNotices.txt)。

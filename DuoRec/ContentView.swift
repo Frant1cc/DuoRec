@@ -5,6 +5,7 @@ import SwiftUI
 private enum WorkspaceSection: String, CaseIterable, Identifiable {
     case recording
     case transcription
+    case languageRecognition
 
     var id: Self { self }
 
@@ -12,6 +13,7 @@ private enum WorkspaceSection: String, CaseIterable, Identifiable {
         switch self {
         case .recording: "navigation.recording"
         case .transcription: "navigation.transcription"
+        case .languageRecognition: "navigation.language_recognition"
         }
     }
 
@@ -19,6 +21,7 @@ private enum WorkspaceSection: String, CaseIterable, Identifiable {
         switch self {
         case .recording: "waveform"
         case .transcription: "doc.text"
+        case .languageRecognition: "character.bubble"
         }
     }
 }
@@ -26,9 +29,16 @@ private enum WorkspaceSection: String, CaseIterable, Identifiable {
 struct ContentView: View {
     @EnvironmentObject private var recorder: RecorderModel
     @Environment(\.scenePhase) private var scenePhase
-    @StateObject private var transcription = TranscriptionModel()
+    @StateObject private var whisper: WhisperModelStore
+    @StateObject private var transcription: TranscriptionModel
     @State private var selection: WorkspaceSection? = .recording
     @State private var columnVisibility = NavigationSplitViewVisibility.all
+
+    init() {
+        let models = WhisperModelStore()
+        _whisper = StateObject(wrappedValue: models)
+        _transcription = StateObject(wrappedValue: TranscriptionModel(models: models))
+    }
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -56,7 +66,9 @@ struct ContentView: View {
                 case .recording:
                     RecordingView()
                 case .transcription:
-                    TranscriptionView(model: transcription)
+                    TranscriptionView(model: transcription, models: whisper)
+                case .languageRecognition:
+                    LanguageRecognitionView(models: whisper, transcription: transcription)
                 }
             }
             .navigationTitle((selection ?? .recording).title)
@@ -73,7 +85,10 @@ struct ContentView: View {
             recorder.refreshMicrophones()
             await recorder.refreshPermissions()
         }
-        .onDisappear { transcription.cancel() }
+        .onDisappear {
+            transcription.cancel()
+            whisper.cancelTransfer()
+        }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             recorder.refreshMicrophones()

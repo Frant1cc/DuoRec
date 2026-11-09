@@ -649,12 +649,6 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选中文字后点击“复制”或按 ⌘C；⌘A 可全选。" } }
       }
     },
-    "transcription.error.model_unavailable" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "The Mandarin transcription model could not be prepared. Check your connection and try again." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法准备普通话转写模型。请检查网络连接后重试。" } }
-      }
-    },
     "transcription.error.no_speech" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "No speech was recognized in this recording." } },
@@ -671,12 +665,6 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "This audio file could not be read. Choose a playable recording and try again." } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法读取这个音频文件。请选择可播放的录音后重试。" } }
-      }
-    },
-    "transcription.error.unsupported_language" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mandarin transcription is not available on this Mac." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这台 Mac 暂不支持普通话本机转写。" } }
       }
     },
     "transcription.file_picker.choose" : {
@@ -740,9 +728,19 @@
       }
     },
     "transcription.status.preparing" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preparing Mandarin transcription…" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在准备普通话转写…" } }
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing audio…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在准备音频…"
+          }
+        }
       }
     },
     "transcription.status.transcribing" : {
@@ -752,9 +750,19 @@
       }
     },
     "transcription.subtitle" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Transcribe Mandarin on this Mac and filter DuoRec recordings by audio source. Switching pages keeps your text; closing the window clears it." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在本机转写普通话，按声音来源筛选 DuoRec 录音。切换页面保留文字，关闭窗口后清除。" } }
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcribe locally with Whisper and filter DuoRec recordings by audio source. Choose your model in Language Recognition. Switching pages keeps your text; closing the window clears it."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 Whisper 在本机转写，按来源筛选 DuoRec 录音；可在「语言识别」页选择模型。切换页面保留文字，关闭窗口后清空。"
+          }
+        }
       }
     },
     "transcription.title" : {
@@ -762,7 +770,530 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording to Text" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音转文字" } }
       }
-    }
+    },
+    "navigation.language_recognition": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language Recognition"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语言识别"
+          }
+        }
+      }
+    },
+    "whisper.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper Language Recognition"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper 语言识别"
+          }
+        }
+      }
+    },
+    "whisper.subtitle": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a multilingual Whisper model, download it once, then transcribe offline. The Transcription page uses your selected model."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择多语言 Whisper 模型，下载一次即可离线转写。「转写」页会使用当前选中的模型。"
+          }
+        }
+      }
+    },
+    "whisper.models": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recognition Model"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "识别模型"
+          }
+        }
+      }
+    },
+    "whisper.model.large-v3.summary": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accuracy first · highest resource usage"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "准确率优先 · 资源占用最高"
+          }
+        }
+      }
+    },
+    "whisper.model.large-v3-turbo.summary": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faster large model · recommended for everyday use"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大模型加速版 · 适合日常使用"
+          }
+        }
+      }
+    },
+    "whisper.model.small.summary": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lightweight · lower memory usage"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻量模型 · 内存占用较低"
+          }
+        }
+      }
+    },
+    "whisper.model.medium.summary": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balance recognition quality and resource usage"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "兼顾识别效果与资源占用"
+          }
+        }
+      }
+    },
+    "whisper.language.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio Language"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "录音语言"
+          }
+        }
+      }
+    },
+    "whisper.language.auto": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动识别"
+          }
+        }
+      }
+    },
+    "whisper.language.zh": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chinese"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中文"
+          }
+        }
+      }
+    },
+    "whisper.language.en": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "English"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "英语"
+          }
+        }
+      }
+    },
+    "whisper.language.help": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic detects the main language of each track. For recordings in one language, choosing it explicitly can improve reliability. Mixed-language accuracy varies."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动模式判断每条音轨的主要语言。单一语言的录音可指定中文或英语，提高识别稳定性；中英混说效果取决于录音内容。"
+          }
+        }
+      }
+    },
+    "whisper.local_only": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio stays on this Mac"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "录音始终留在本机"
+          }
+        }
+      }
+    },
+    "whisper.import_model": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import Model…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入模型…"
+          }
+        }
+      }
+    },
+    "whisper.storage_help": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model downloads connect to Hugging Face. Files are kept in DuoRec’s Application Support folder. Import a matching original ggml .bin file if you already have one. Removing a model keeps recordings and transcripts."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模型从 Hugging Face 下载，保存在 DuoRec 的应用支持目录中。也可选中模型后导入对应的原版 ggml .bin 文件。删除模型不会删除录音或转写文字。"
+          }
+        }
+      }
+    },
+    "whisper.selected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已选择"
+          }
+        }
+      }
+    },
+    "whisper.not_selected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not selected"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未选择"
+          }
+        }
+      }
+    },
+    "whisper.installed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloaded"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已下载"
+          }
+        }
+      }
+    },
+    "whisper.remove": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove downloaded model"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除已下载模型"
+          }
+        }
+      }
+    },
+    "whisper.download": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载"
+          }
+        }
+      }
+    },
+    "whisper.downloading": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading model…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在下载模型…"
+          }
+        }
+      }
+    },
+    "whisper.verifying": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifying model integrity…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在校验模型完整性…"
+          }
+        }
+      }
+    },
+    "whisper.manage": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Model"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择模型"
+          }
+        }
+      }
+    },
+    "whisper.model_required": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download or import the selected model in Language Recognition first."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先在「语言识别」页下载或导入选中的模型。"
+          }
+        }
+      }
+    },
+    "whisper.error.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper Model Unavailable"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper 模型不可用"
+          }
+        }
+      }
+    },
+    "whisper.error.model_missing": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download or import the selected Whisper model in Language Recognition, then import your audio again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先在「语言识别」页下载或导入选中的 Whisper 模型，再重新导入录音。"
+          }
+        }
+      }
+    },
+    "whisper.error.invalid_model": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file does not match the selected model or is incomplete. Use the original unquantized ggml .bin file and try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件与所选模型不符或不完整。请使用对应模型的原版、未量化 ggml .bin 文件后重试。"
+          }
+        }
+      }
+    },
+    "whisper.error.download_failed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The model download failed. Check your connection to Hugging Face and try again, or import a downloaded model."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模型下载失败。请检查与 Hugging Face 的连接后重试，也可导入已下载的模型。"
+          }
+        }
+      }
+    },
+    "whisper.error.load_failed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper could not load this model. Free some memory or choose a smaller model and try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper 无法加载此模型。请释放内存，或选择较小的模型后重试。"
+          }
+        }
+      }
+    },
+    "whisper.error.recognition_failed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper could not finish transcription. Try again or choose a smaller model."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper 未能完成转写。请重试，或选择较小的模型。"
+          }
+        }
+      }
+    },
+    "whisper.track_progress": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Progress for current audio track"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前音轨识别进度"
+          }
+        }
+      }
+    },
+    "whisper.disk_size": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Disk"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "磁盘大小"}}}},
+    "whisper.connecting": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Connecting to model server…"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "正在连接模型服务器…"}}}},
+    "whisper.pause": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Pause"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "暂停"}}}},
+    "whisper.pausing": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Pausing…"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "正在暂停…"}}}},
+    "whisper.resume": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Resume"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "继续下载"}}}},
+    "whisper.resuming": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Connecting to resume download…"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "正在连接并继续下载…"}}}},
+    "whisper.paused": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Paused · saved"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "已暂停 · 已保留"}}}},
+    "whisper.discard_partial": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Delete the incomplete download"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "删除未完成的下载"}}}},
+    "whisper.reverify": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Verify Again"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "重新校验"}}}},
+    "whisper.error.size_mismatch": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "The file is %@; this model requires %@. The downloaded data has been kept. Resume an incomplete download or delete it explicitly to start again."}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "实际文件大小为 %@，该模型需要 %@。已保留下载数据；未完成时可继续下载，也可主动删除后重下。"}}}},
+    "whisper.error.checksum_mismatch": {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "The file checksum did not match the model. The downloaded file has been kept. Verify it again, or delete it explicitly before downloading again."}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "文件校验值与模型不符，下载文件已保留。可重新校验，或主动删除后重新下载。"}}}}
   },
   "version" : "1.0"
 }
