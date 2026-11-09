@@ -8,14 +8,9 @@ import OSLog
 
 @MainActor
 final class RecorderModel: ObservableObject {
-    enum State: Equatable {
-        case idle
-        case preparing
-        case recording
-        case finishing
-    }
+    @Published private(set) var lifecycle = RecorderLifecycle()
+    var state: RecorderLifecycle.Capture { lifecycle.capture }
 
-    @Published private(set) var state: State = .idle
     @Published private(set) var systemLevel = 0.0
     @Published private(set) var microphoneLevel = 0.0
     @Published private(set) var elapsedSeconds = 0
@@ -26,8 +21,6 @@ final class RecorderModel: ObservableObject {
     @Published var errorMessage: String?
     @Published private(set) var lastRecordingURL: URL?
     @Published private(set) var outputFolderURL: URL
-    @Published private(set) var isMonitoring = false
-    @Published var isUpdateSessionActive = false
     @Published var microphoneBoostDB: Float {
         didSet { UserDefaults.standard.set(microphoneBoostDB, forKey: Self.microphoneBoostKey) }
     }
@@ -39,12 +32,12 @@ final class RecorderModel: ObservableObject {
     private var monitorOutput: CaptureOutput?
     private var rawRecordingURL: URL?
     private var preparationTask: Task<Void, Never>?
+    private var preparationID: UUID?
     private var finishTask: Task<Bool, Never>?
     private var sessionID: UUID?
     private var pendingCaptureError: String?
     private var didCheckRecovery = false
     private var lastSaveSucceeded = true
-    @Published private(set) var isTerminating = false
     @Published private(set) var hasRecoveryFiles = false
     private var elapsedTask: Task<Void, Never>?
     private var isAccessingSecurityScopedOutput = false
@@ -64,10 +57,21 @@ final class RecorderModel: ObservableObject {
     }
 
     var isRecording: Bool { state == .recording }
-    var isPreparing: Bool { state == .preparing }
-    var isFinishing: Bool { state == .finishing }
-    var isBusy: Bool { state != .idle || isMonitoring || isTerminating }
-    var isTransitioning: Bool { state == .preparing || state == .finishing || isTerminating || isUpdateSessionActive }
+    var isMonitoring: Bool { state == .monitoring }
+    var isPreparing: Bool { state.isPreparing }
+    var isFinishing: Bool { state.isFinishing }
+    var isTerminating: Bool { lifecycle.availability == .terminating }
+    var isUpdateSessionActive: Bool { lifecycle.availability == .updating }
+    var isBusy: Bool { lifecycle.isBusy }
+    var isTransitioning: Bool { !lifecycle.canPerformPrimaryAction }
+    var canToggleMonitoring: Bool { lifecycle.canToggleMonitoring }
+    var canEditSettings: Bool { lifecycle.canEditSettings }
+    var canCheckForUpdates: Bool { lifecycle.canCheckForUpdates }
+
+    func updateSessionChanged(isActive: Bool) {
+        lifecycle.updateSessionChanged(isActive: isActive)
+    }
+
     var hasAllPermissions: Bool { hasScreenPermission && hasMicrophonePermission }
     var hasScreenPermission: Bool { screenAccess == .granted }
 
@@ -82,22 +86,22 @@ final class RecorderModel: ObservableObject {
     var statusText: String {
         if isUpdateSessionActive { return String(localized: "updates.in_progress") }
         return switch state {
-        case .idle:
-            isMonitoring
-                ? String(localized: "status.monitoring")
-                : String(localized: "status.ready")
-        case .preparing: String(localized: "status.preparing")
+        case .idle: String(localized: "status.ready")
+        case .monitoring: String(localized: "status.monitoring")
+        case .startingRecording, .startingMonitoring, .stoppingMonitoring:
+            String(localized: "status.preparing")
         case .recording: String(localized: "status.recording")
-        case .finishing: String(localized: "status.finishing")
+        case .saving, .recovering: String(localized: "status.finishing")
         }
     }
 
     var primaryActionTitle: String {
         switch state {
-        case .idle: String(localized: "action.start_recording")
-        case .preparing: String(localized: "action.preparing")
+        case .idle, .monitoring: String(localized: "action.start_recording")
+        case .startingRecording, .startingMonitoring, .stoppingMonitoring:
+            String(localized: "action.preparing")
         case .recording: String(localized: "action.stop_and_save")
-        case .finishing: String(localized: "action.saving")
+        case .saving, .recovering: String(localized: "action.saving")
         }
     }
 
@@ -175,6 +179,7 @@ final class RecorderModel: ObservableObject {
     }
 
     func chooseOutputFolder() {
+        guard canEditSettings else { return }
         let panel = NSOpenPanel()
         panel.title = String(localized: "folder_picker.title")
         panel.prompt = String(localized: "folder_picker.choose")
@@ -185,7 +190,7 @@ final class RecorderModel: ObservableObject {
         panel.canCreateDirectories = true
         panel.directoryURL = outputFolderURL
 
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard panel.runModal() == .OK, let url = panel.url, canEditSettings else { return }
         outputFolderURL = url
 
         do {
@@ -201,24 +206,27 @@ final class RecorderModel: ObservableObject {
     }
 
     func startRecording() async {
-        guard state == .idle, !isTerminating, !isUpdateSessionActive else { return }
-        state = .preparing
+        guard lifecycle.canStartRecording else { return }
+        lifecycle.capture = .startingRecording
+        let operationID = UUID()
+        preparationID = operationID
         let task = Task { await prepareRecording() }
         preparationTask = task
         await task.value
-        preparationTask = nil
+        if preparationID == operationID {
+            preparationTask = nil
+            preparationID = nil
+        }
     }
 
     private func prepareRecording() async {
+        if monitorStream != nil {
+            await stopInputMonitoring()
+        }
         let id = UUID()
         sessionID = id
         lastSaveSucceeded = true
         pendingCaptureError = nil
-        if isMonitoring {
-            await stopInputMonitoring()
-        }
-
-        state = .preparing
         errorMessage = nil
         systemLevel = 0
         microphoneLevel = 0
@@ -236,21 +244,8 @@ final class RecorderModel: ObservableObject {
             let output = CaptureOutput(
                 writer: writer,
                 microphoneGainDB: microphoneBoostDB,
-                levelHandler: { [weak self] source, level in
-                    Task { @MainActor [weak self] in
-                        guard let self, self.sessionID == id,
-                              self.state == .preparing || self.state == .recording else { return }
-                        switch source {
-                        case .system: self.systemLevel = level
-                        case .microphone: self.microphoneLevel = level
-                        }
-                    }
-                },
-                errorHandler: { [weak self] message in
-                    Task { @MainActor [weak self] in
-                        await self?.handleCaptureFailure(message, session: id)
-                    }
-                }
+                levelHandler: makeLevelHandler(session: id),
+                errorHandler: makeCaptureErrorHandler(session: id)
             )
 
             captureOutput = output
@@ -259,7 +254,7 @@ final class RecorderModel: ObservableObject {
             try await stream.startCapture()
             captureAccessSucceeded()
 
-            state = .recording
+            lifecycle.capture = .recording
             startElapsedTimer()
             if let pendingCaptureError {
                 await handleCaptureFailure(pendingCaptureError, session: id)
@@ -268,28 +263,36 @@ final class RecorderModel: ObservableObject {
             captureAccessFailed(error)
             await cleanUpAfterFailure()
             errorMessage = userFacingMessage(for: error)
-            state = .idle
+            lifecycle.capture = .idle
         }
     }
 
     func toggleInputMonitoring() async {
-        guard state == .idle, !isTerminating, !isUpdateSessionActive else { return }
-        state = .preparing
+        guard lifecycle.canToggleMonitoring else { return }
+        let wasMonitoring = isMonitoring
+        lifecycle.capture = wasMonitoring ? .stoppingMonitoring : .startingMonitoring
+        let operationID = UUID()
+        preparationID = operationID
         let task = Task {
-            if isMonitoring {
+            if wasMonitoring {
                 await stopInputMonitoring()
+                lifecycle.capture = .idle
             } else {
                 await startInputMonitoring()
             }
-            state = .idle
         }
         preparationTask = task
         await task.value
-        preparationTask = nil
+        if preparationID == operationID {
+            preparationTask = nil
+            preparationID = nil
+        }
     }
 
     private func startInputMonitoring() async {
-        guard !isMonitoring else { return }
+        let id = UUID()
+        sessionID = id
+        pendingCaptureError = nil
         errorMessage = nil
 
         do {
@@ -300,31 +303,35 @@ final class RecorderModel: ObservableObject {
             let output = CaptureOutput(
                 writer: nil,
                 microphoneGainDB: microphoneBoostDB,
-                levelHandler: makeLevelHandler(),
-                errorHandler: makeCaptureErrorHandler()
+                levelHandler: makeLevelHandler(session: id),
+                errorHandler: makeCaptureErrorHandler(session: id)
             )
             let stream = try await makeStream(output: output)
             monitorOutput = output
             monitorStream = stream
             try await stream.startCapture()
             captureAccessSucceeded()
-            isMonitoring = true
+            lifecycle.capture = .monitoring
+            if let pendingCaptureError {
+                await handleCaptureFailure(pendingCaptureError, session: id)
+            }
         } catch {
             captureAccessFailed(error)
-            monitorStream = nil
-            monitorOutput = nil
-            isMonitoring = false
+            await stopInputMonitoring()
+            lifecycle.capture = .idle
             errorMessage = userFacingMessage(for: error)
         }
     }
 
     private func stopInputMonitoring() async {
+        // Invalidate callbacks before stopCapture suspends or emits a stop error.
+        sessionID = nil
+        pendingCaptureError = nil
         if let monitorStream {
             try? await monitorStream.stopCapture()
         }
         monitorStream = nil
         monitorOutput = nil
-        isMonitoring = false
         systemLevel = 0
         microphoneLevel = 0
     }
@@ -335,19 +342,24 @@ final class RecorderModel: ObservableObject {
 
     private func handleCaptureFailure(_ message: String, session id: UUID) async {
         guard sessionID == id else { return }
-        if state == .preparing {
+        switch state {
+        case .startingRecording, .startingMonitoring:
             pendingCaptureError = message
-            return
+        case .recording:
+            errorMessage = message
+            _ = await finishRecording()
+        case .monitoring:
+            errorMessage = message
+            await toggleInputMonitoring()
+        default:
+            break
         }
-        guard state == .recording else { return }
-        errorMessage = message
-        _ = await finishRecording()
     }
 
     private func finishRecording() async -> Bool {
         if let finishTask { return await finishTask.value }
         guard state == .recording, let stream, let captureOutput else { return lastSaveSucceeded }
-        state = .finishing
+        lifecycle.capture = .saving
         elapsedTask?.cancel()
         elapsedTask = nil
         let task = Task { await saveRecording(stream: stream, output: captureOutput) }
@@ -355,7 +367,7 @@ final class RecorderModel: ObservableObject {
         let saved = await task.value
         finishTask = nil
         lastSaveSucceeded = saved
-        state = .idle
+        lifecycle.capture = .idle
         return saved
     }
 
@@ -408,24 +420,25 @@ final class RecorderModel: ObservableObject {
 
     func prepareForTermination() async -> Bool {
         guard !isTerminating else { return false }
-        isTerminating = true
+        lifecycle.availability = .terminating
         if let preparationTask { await preparationTask.value }
         let saved = await finishRecording()
         await stopInputMonitoring()
+        if state == .monitoring { lifecycle.capture = .idle }
         // Keep new recordings disabled until AppKit has actually exited.
-        if !saved { isTerminating = false }
+        if !saved { lifecycle.availability = .available }
         return saved
     }
 
     func recoverInterruptedRecordings() async {
-        guard !didCheckRecovery, state == .idle, !isTerminating else { return }
+        guard !didCheckRecovery, lifecycle.canRecover else { return }
         didCheckRecovery = true
-        state = .finishing
+        lifecycle.capture = .recovering
         let task = Task { await recoverFiles() }
         finishTask = task
         _ = await task.value
         finishTask = nil
-        state = .idle
+        lifecycle.capture = .idle
     }
 
     private func recoverFiles() async -> Bool {
@@ -503,10 +516,10 @@ final class RecorderModel: ObservableObject {
         return stream
     }
 
-    private func makeLevelHandler() -> @Sendable (AudioSource, Double) -> Void {
+    private func makeLevelHandler(session id: UUID) -> @Sendable (AudioSource, Double) -> Void {
         { [weak self] source, level in
             Task { @MainActor [weak self] in
-                guard let self else { return }
+                guard let self, self.sessionID == id, self.state.acceptsLevels else { return }
                 switch source {
                 case .system: self.systemLevel = level
                 case .microphone: self.microphoneLevel = level
@@ -515,10 +528,10 @@ final class RecorderModel: ObservableObject {
         }
     }
 
-    private func makeCaptureErrorHandler() -> @Sendable (String) -> Void {
+    private func makeCaptureErrorHandler(session id: UUID) -> @Sendable (String) -> Void {
         { [weak self] message in
             Task { @MainActor [weak self] in
-                self?.errorMessage = message
+                await self?.handleCaptureFailure(message, session: id)
             }
         }
     }
@@ -656,6 +669,8 @@ final class RecorderModel: ObservableObject {
         endAccessingOutputFolder()
         elapsedTask?.cancel()
         elapsedTask = nil
+        systemLevel = 0
+        microphoneLevel = 0
     }
 
     private func userFacingMessage(for error: Error) -> String {

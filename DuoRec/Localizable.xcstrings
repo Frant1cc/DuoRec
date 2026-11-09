@@ -721,6 +721,12 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入录音后，文字会显示在这里。" } }
       }
     },
+    "transcription.status.failed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Transcription failed. Import audio to try again." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "转写失败，请重新导入音频重试" } }
+      }
+    },
     "transcription.status.finished" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Transcription complete" } },

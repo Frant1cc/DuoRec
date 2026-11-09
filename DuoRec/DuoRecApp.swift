@@ -161,7 +161,7 @@ struct CheckForUpdatesButton: View {
 
     var body: some View {
         Button("updates.check") { updater.checkForUpdates() }
-            .disabled(!updater.canCheckForUpdates || recorder.isBusy || recorder.isUpdateSessionActive)
+            .disabled(!updater.canCheckForUpdates || !recorder.canCheckForUpdates)
             .help(String(localized: "updates.help"))
     }
 }

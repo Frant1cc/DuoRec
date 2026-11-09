@@ -80,14 +80,19 @@ final class DualTrackAudioWriter {
     private let microphoneInput: AVAssetWriterInput
     private let outputURL: URL
 
-    private var hasStartedSession = false
+    private enum State {
+        case buffering
+        case writing
+        case finishing
+        case finished(Result<URL, Error>)
+    }
+
+    private var state: State = .buffering
     private var hasSeenSystemAudio = false
     private var hasSeenMicrophone = false
     private var pendingSamples: [(CMSampleBuffer, AudioSource)] = []
-    private var isFinishing = false
     // Capture callbacks and shutdown can arrive on different queues.
     private let lock = NSLock()
-    private var finishResult: Result<URL, Error>?
     private var finishWaiters: [(Result<URL, Error>) -> Void] = []
 
     init(outputURL: URL) throws {
@@ -138,14 +143,17 @@ final class DualTrackAudioWriter {
     func append(_ sampleBuffer: CMSampleBuffer, source: AudioSource) throws {
         lock.lock()
         defer { lock.unlock() }
-        guard !isFinishing else { return }
+        switch state {
+        case .finishing, .finished: return
+        case .buffering, .writing: break
+        }
 
         switch source {
         case .system: hasSeenSystemAudio = true
         case .microphone: hasSeenMicrophone = true
         }
 
-        if !hasStartedSession {
+        if case .buffering = state {
             pendingSamples.append((sampleBuffer, source))
             if (hasSeenSystemAudio && hasSeenMicrophone) || pendingSamples.count >= 20 {
                 try beginSession()
@@ -164,32 +172,32 @@ final class DualTrackAudioWriter {
 
     private func finish(completion: @escaping (Result<URL, Error>) -> Void) {
         lock.lock()
-        if let finishResult {
+        if case .finished(let result) = state {
             lock.unlock()
-            completion(finishResult)
+            completion(result)
             return
         }
         finishWaiters.append(completion)
-        guard !isFinishing else {
+        if case .finishing = state {
             lock.unlock()
             return
         }
-        isFinishing = true
 
         do {
             guard writer.status == .unknown || writer.status == .writing else {
                 throw writer.error ?? AudioWriterError.finishFailed
             }
-            if !hasStartedSession, !pendingSamples.isEmpty {
+            if case .buffering = state, !pendingSamples.isEmpty {
                 try beginSession()
             }
-            guard hasStartedSession else {
+            guard case .writing = state else {
                 writer.cancelWriting()
                 throw AudioWriterError.noAudio
             }
             guard writer.status == .writing else {
                 throw writer.error ?? AudioWriterError.finishFailed
             }
+            state = .finishing
             systemInput.markAsFinished()
             microphoneInput.markAsFinished()
             lock.unlock()
@@ -200,6 +208,7 @@ final class DualTrackAudioWriter {
                 completeFinish(result)
             }
         } catch {
+            state = .finishing
             lock.unlock()
             completeFinish(.failure(error))
         }
@@ -207,7 +216,7 @@ final class DualTrackAudioWriter {
 
     private func completeFinish(_ result: Result<URL, Error>) {
         lock.lock()
-        finishResult = result
+        state = .finished(result)
         let waiters = finishWaiters
         finishWaiters.removeAll()
         lock.unlock()
@@ -215,7 +224,7 @@ final class DualTrackAudioWriter {
     }
 
     private func beginSession() throws {
-        guard !hasStartedSession else { return }
+        guard case .buffering = state else { return }
         guard writer.startWriting() else {
             throw writer.error ?? AudioWriterError.startFailed
         }
@@ -225,7 +234,7 @@ final class DualTrackAudioWriter {
             .min(by: { CMTimeCompare($0, $1) < 0 }) ?? .zero
 
         writer.startSession(atSourceTime: startTime)
-        hasStartedSession = true
+        state = .writing
 
         let buffered = pendingSamples.sorted {
             CMTimeCompare(

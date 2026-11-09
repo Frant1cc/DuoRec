@@ -63,7 +63,7 @@ struct ContentView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if recorder.state != .idle {
+            if recorder.state != .idle && !recorder.isMonitoring {
                 RecordingStatusBar()
             }
         }
@@ -121,7 +121,7 @@ private struct RecordingView: View {
                 settingsSection
 
                 VStack(spacing: 12) {
-                    if recorder.state == .idle {
+                    if recorder.state == .idle || recorder.isMonitoring {
                         RecordingActionButton()
                             .controlSize(.large)
                     }
@@ -169,7 +169,7 @@ private struct RecordingView: View {
                 }
                 .buttonStyle(.borderless)
                 .font(.callout)
-                .disabled(recorder.isTransitioning || recorder.isRecording)
+                .disabled(!recorder.canToggleMonitoring)
             }
         }
     }
@@ -233,7 +233,7 @@ private struct RecordingView: View {
             .font(.callout)
             .labelStyle(AlignedIconLabelStyle())
             .padding(10)
-            .disabled(recorder.isBusy)
+            .disabled(!recorder.canEditSettings)
         }
     }
 }

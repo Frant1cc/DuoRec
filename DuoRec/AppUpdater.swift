@@ -19,7 +19,7 @@ final class AppUpdater: NSObject, ObservableObject, SPUUpdaterDelegate {
         controller.updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
         sessionObservation = controller.updater.publisher(for: \.sessionInProgress)
-            .sink { [weak recorder] active in recorder?.isUpdateSessionActive = active }
+            .sink { [weak recorder] active in recorder?.updateSessionChanged(isActive: active) }
 
         // Unconfigured source builds can still record; they cannot accept updates.
         if let key = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String,
@@ -29,10 +29,10 @@ final class AppUpdater: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     func checkForUpdates() {
-        guard let recorder, !recorder.isBusy, !recorder.isUpdateSessionActive,
+        guard let recorder, recorder.canCheckForUpdates,
               let controller, canCheckForUpdates else { return }
         // Lock synchronously, before Sparkle publishes its session state.
-        recorder.isUpdateSessionActive = true
+        recorder.updateSessionChanged(isActive: true)
         controller.checkForUpdates(nil)
     }
 
@@ -42,6 +42,8 @@ final class AppUpdater: NSObject, ObservableObject, SPUUpdaterDelegate {
                 NSLocalizedDescriptionKey: String(localized: "updates.busy")
             ])
         }
+        // Automatic checks need the same synchronous reservation as manual ones.
+        recorder.updateSessionChanged(isActive: true)
     }
 
     func updater(
@@ -49,6 +51,6 @@ final class AppUpdater: NSObject, ObservableObject, SPUUpdaterDelegate {
         didFinishUpdateCycleFor updateCheck: SPUUpdateCheck,
         error: Error?
     ) {
-        recorder?.isUpdateSessionActive = false
+        recorder?.updateSessionChanged(isActive: false)
     }
 }

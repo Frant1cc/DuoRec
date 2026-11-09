@@ -24,6 +24,8 @@
 
 项目中的工程和 Scheme 名称为 `DuoRec`，生成的应用名称为 `DuoRec.app`。
 
+状态所有权、允许的操作、异步取消规则及回归检查见[应用状态机清单](STATE_MACHINES.md)。
+
 ### 使用命令行
 
 先启动一次 Xcode，完成首次运行所需的组件安装，并确认 `xcodebuild -version` 指向完整 Xcode。然后执行：

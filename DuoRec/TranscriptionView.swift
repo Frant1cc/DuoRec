@@ -12,6 +12,7 @@ final class TranscriptionModel: ObservableObject {
         case preparing
         case transcribing
         case finished
+        case failed
     }
 
     @Published var text = ""
@@ -24,11 +25,17 @@ final class TranscriptionModel: ObservableObject {
 
     private var task: Task<Void, Never>?
     private var analyzer: SpeechAnalyzer?
-    private var generation = UUID()
+    @Published private(set) var documentID = UUID()
+    private let sourceResolver: (URL) async throws -> URL?
+
+    init(sourceResolver: @escaping (URL) async throws -> URL? = AudioTrackExtractor.transcriptionSourceURL) {
+        self.sourceResolver = sourceResolver
+    }
 
     var isWorking: Bool { phase == .preparing || phase == .transcribing }
 
     func chooseFile(outputFolderURL: URL) {
+        guard !isWorking else { return }
         let panel = NSOpenPanel()
         panel.title = String(localized: "transcription.file_picker.title")
         panel.prompt = String(localized: "transcription.file_picker.choose")
@@ -36,12 +43,12 @@ final class TranscriptionModel: ObservableObject {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
 
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        start(url: url, outputFolderURL: outputFolderURL)
+        guard panel.runModal() == .OK, let url = panel.url, !isWorking else { return }
+        transcribe(url: url, outputFolderURL: outputFolderURL)
     }
 
     func cancel() {
-        generation = UUID()
+        documentID = UUID()
         task?.cancel()
         task = nil
         if let analyzer {
@@ -57,14 +64,16 @@ final class TranscriptionModel: ObservableObject {
         errorMessage = nil
     }
 
-    private func start(url: URL, outputFolderURL: URL) {
+    @discardableResult
+    func transcribe(url: URL, outputFolderURL: URL) -> Task<Void, Never>? {
+        guard !isWorking else { return nil }
         cancel()
         let currentGeneration = UUID()
-        generation = currentGeneration
+        documentID = currentGeneration
         fileName = url.lastPathComponent
         phase = .preparing
 
-        task = Task {
+        let task = Task {
             let hasFileScope = url.startAccessingSecurityScopedResource()
             let isSavedRecording = url.deletingLastPathComponent().standardizedFileURL == outputFolderURL.standardizedFileURL
             let hasFolderScope = isSavedRecording && outputFolderURL.startAccessingSecurityScopedResource()
@@ -74,7 +83,9 @@ final class TranscriptionModel: ObservableObject {
             }
 
             do {
-                if let dualTrackURL = try await AudioTrackExtractor.transcriptionSourceURL(for: url) {
+                try requireCurrentGeneration(currentGeneration)
+                if let dualTrackURL = try await sourceResolver(url) {
+                    try requireCurrentGeneration(currentGeneration)
                     usesSourceTimeline = true
                     try await transcribeDualTrackFile(dualTrackURL, generation: currentGeneration)
                 } else {
@@ -82,31 +93,35 @@ final class TranscriptionModel: ObservableObject {
                         url, source: nil, timeOffset: 0, firstMediaTime: 0, generation: currentGeneration
                     )
                 }
-                guard generation == currentGeneration, !Task.isCancelled else { return }
+                guard documentID == currentGeneration, !Task.isCancelled else { return }
                 phase = .finished
                 let hasSpeech = usesSourceTimeline ? !segments.isEmpty : !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 if !hasSpeech { errorMessage = String(localized: "transcription.error.no_speech") }
             } catch {
-                guard generation == currentGeneration, !Task.isCancelled else { return }
-                phase = .idle
+                guard documentID == currentGeneration, !Task.isCancelled else { return }
+                phase = .failed
                 errorMessage = error.localizedDescription
             }
 
-            guard generation == currentGeneration else { return }
+            guard documentID == currentGeneration else { return }
             analyzer = nil
-            task = nil
+            self.task = nil
         }
+        self.task = task
+        return task
     }
 
     private func transcribeDualTrackFile(_ url: URL, generation currentGeneration: UUID) async throws {
+        try requireCurrentGeneration(currentGeneration)
         let temporaryFolder = FileManager.default.temporaryDirectory
             .appendingPathComponent("DuoRec-Transcription-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: temporaryFolder) }
 
         let tracks = try await AudioTrackExtractor.extractTracks(in: url, to: temporaryFolder)
+        try requireCurrentGeneration(currentGeneration)
         guard !tracks.isEmpty else { throw TranscriptionError.unreadableFile }
         for track in tracks {
-            try Task.checkCancellation()
+            try requireCurrentGeneration(currentGeneration)
             _ = try await transcribeAudioFile(
                 track.url,
                 source: track.source,
@@ -124,6 +139,7 @@ final class TranscriptionModel: ObservableObject {
         firstMediaTime: TimeInterval,
         generation currentGeneration: UUID
     ) async throws -> [TranscriptSegment] {
+        try requireCurrentGeneration(currentGeneration)
         guard SpeechTranscriber.isAvailable,
               let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "zh_CN")) else {
             throw TranscriptionError.unsupportedLanguage
@@ -131,13 +147,16 @@ final class TranscriptionModel: ObservableObject {
 
         let transcriber = SpeechTranscriber(locale: locale, preset: .timeIndexedTranscriptionWithAlternatives)
         let modules: [any SpeechModule] = [transcriber]
+        try requireCurrentGeneration(currentGeneration)
         if await AssetInventory.status(forModules: modules) != .installed {
+            try requireCurrentGeneration(currentGeneration)
             guard let installation = try await AssetInventory.assetInstallationRequest(supporting: modules) else {
                 throw TranscriptionError.modelUnavailable
             }
+            try requireCurrentGeneration(currentGeneration)
             try await installation.downloadAndInstall()
         }
-        try Task.checkCancellation()
+        try requireCurrentGeneration(currentGeneration)
 
         let audioFile: AVAudioFile
         do {
@@ -153,7 +172,7 @@ final class TranscriptionModel: ObservableObject {
         let results = Task { @MainActor in
             var collected: [TranscriptSegment] = []
             for try await result in transcriber.results {
-                try Task.checkCancellation()
+                try requireCurrentGeneration(currentGeneration)
                 let words = String(result.text.characters)
                 guard !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
                 let relativeStart = result.range.start.seconds
@@ -172,7 +191,7 @@ final class TranscriptionModel: ObservableObject {
                     text: words
                 )
                 collected.append(segment)
-                if generation == currentGeneration {
+                if documentID == currentGeneration {
                     if source != nil {
                         segments.append(segment)
                         segments.sort { $0.startTime < $1.startTime }
@@ -186,7 +205,7 @@ final class TranscriptionModel: ObservableObject {
 
         do {
             if let lastSample = try await analyzer.analyzeSequence(from: audioFile) {
-                try Task.checkCancellation()
+                try requireCurrentGeneration(currentGeneration)
                 try await analyzer.finalizeAndFinish(through: lastSample)
             } else {
                 await analyzer.cancelAndFinishNow()
@@ -197,6 +216,11 @@ final class TranscriptionModel: ObservableObject {
             await analyzer.cancelAndFinishNow()
             throw error
         }
+    }
+
+    private func requireCurrentGeneration(_ expected: UUID) throws {
+        try Task.checkCancellation()
+        guard documentID == expected else { throw CancellationError() }
     }
 }
 
@@ -236,6 +260,10 @@ struct TranscriptionView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                     Text("transcription.status.finished")
+                } else if model.phase == .failed {
+                    Image(systemName: "exclamationmark.circle")
+                        .foregroundStyle(.orange)
+                    Text("transcription.status.failed")
                 } else {
                     Image(systemName: "waveform")
                     Text("transcription.status.idle")
@@ -337,7 +365,7 @@ struct TranscriptionView: View {
                 .disabled(selectedText.isEmpty || model.isWorking)
             }
         }
-        .onChange(of: model.fileName) { _, _ in
+        .onChange(of: model.documentID) { _, _ in
             selectedText = ""
             copyFeedback = nil
         }
