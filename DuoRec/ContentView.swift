@@ -2,40 +2,78 @@ import AVFoundation
 import AppKit
 import SwiftUI
 
+private enum WorkspaceSection: String, CaseIterable, Identifiable {
+    case recording
+    case transcription
+
+    var id: Self { self }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .recording: "navigation.recording"
+        case .transcription: "navigation.transcription"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .recording: "waveform"
+        case .transcription: "doc.text"
+        }
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject private var recorder: RecorderModel
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.openWindow) private var openWindow
+    @StateObject private var transcription = TranscriptionModel()
+    @State private var selection: WorkspaceSection? = .recording
+    @State private var columnVisibility = NavigationSplitViewVisibility.all
 
     var body: some View {
-        VStack(spacing: 0) {
-            VStack(spacing: 0) {
-                header
-                Divider()
-                    .padding(.vertical, 16)
-                permissionSection
-                meterSection
-                    .padding(.top, 18)
-                settingsSection
-                    .padding(.top, 18)
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            List(WorkspaceSection.allCases, selection: $selection) { section in
+                Label(section.title, systemImage: section.icon)
+                    .tag(section)
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 24)
-
-            Spacer(minLength: 12)
-            Divider()
-            actionSection
-                .padding(.horizontal, 24)
-                .padding(.vertical, 14)
-                .background(.bar)
+            .listStyle(.sidebar)
+            .navigationTitle("DuoRec")
+            .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 240)
+            .safeAreaInset(edge: .bottom) {
+                HStack {
+                    SettingsLink {
+                        Label("app.settings", systemImage: "gearshape")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(16)
+            }
+        } detail: {
+            Group {
+                switch selection ?? .recording {
+                case .recording:
+                    RecordingView()
+                case .transcription:
+                    TranscriptionView(model: transcription)
+                }
+            }
+            .navigationTitle((selection ?? .recording).title)
         }
-        .frame(width: 460, height: 690)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .navigationSplitViewStyle(.balanced)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if recorder.state != .idle {
+                RecordingStatusBar()
+            }
+        }
+        .frame(minWidth: 760, minHeight: 560)
         .task {
             await recorder.recoverInterruptedRecordings()
             recorder.refreshMicrophones()
             await recorder.refreshPermissions()
         }
+        .onDisappear { transcription.cancel() }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             recorder.refreshMicrophones()
@@ -56,59 +94,250 @@ struct ContentView: View {
             Text(recorder.errorMessage ?? String(localized: "error.unknown"))
         }
     }
+}
 
-    private var header: some View {
-        HStack(spacing: 16) {
-            Image(nsImage: NSApplication.shared.applicationIconImage)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .frame(width: 64, height: 64)
+private struct RecordingView: View {
+    @EnvironmentObject private var recorder: RecorderModel
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text("DuoRec")
-                    .font(.title2.weight(.semibold))
-                Text(recorder.statusText)
-                    .font(.callout)
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(recorder.statusText)
+                        .font(.title2.weight(.semibold))
+                    Text("recording.subtitle")
+                        .foregroundStyle(.secondary)
+                }
+
+                if !recorder.hasAllPermissions {
+                    GroupBox("permissions.title") {
+                        RecordingPermissionsView()
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+
+                meterSection
+                settingsSection
+
+                VStack(spacing: 12) {
+                    if recorder.state == .idle {
+                        RecordingActionButton()
+                            .controlSize(.large)
+                    }
+
+                    Text("recording.headphones_tip")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+
+                    if let lastRecordingURL = recorder.lastRecordingURL {
+                        Button {
+                            recorder.reveal(lastRecordingURL)
+                        } label: {
+                            Label("recording.reveal_recent", systemImage: "folder")
+                        }
+                        .buttonStyle(.link)
+                        .help(lastRecordingURL.path)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 4)
+            }
+            .padding(28)
+            .frame(maxWidth: 660)
+            .frame(maxWidth: .infinity)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var meterSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 16) {
+                LevelRow(title: "source.system_audio", icon: "macbook", level: recorder.systemLevel)
+                LevelRow(title: "source.microphone", icon: "mic", level: recorder.microphoneLevel)
+                Text(meterHelpText)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
-            Spacer()
-
-            if recorder.isRecording {
-                Text(recorder.formattedElapsedTime)
-                    .font(.system(.title3, design: .monospaced, weight: .medium))
-                    .foregroundStyle(.red)
+            .padding(10)
+        } label: {
+            HStack {
+                Text("levels.title")
+                Spacer()
+                Button(recorder.isMonitoring ? "monitor.stop" : "monitor.start") {
+                    Task { await recorder.toggleInputMonitoring() }
+                }
+                .buttonStyle(.borderless)
+                .font(.callout)
+                .disabled(recorder.isTransitioning || recorder.isRecording)
             }
         }
     }
 
-    private var permissionSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("permissions.title")
-                    .font(.headline)
-                Spacer()
+    private var meterHelpText: LocalizedStringKey {
+        if recorder.isRecording { return "levels.help.recording" }
+        if recorder.isMonitoring { return "levels.help.monitoring" }
+        return "levels.help.idle"
+    }
+
+    private var settingsSection: some View {
+        GroupBox("settings.title") {
+            Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 16) {
+                GridRow {
+                    Label("settings.microphone", systemImage: "mic")
+                        .foregroundStyle(.secondary)
+                    Picker("settings.microphone", selection: $recorder.selectedMicrophoneID) {
+                        if recorder.microphones.isEmpty {
+                            Text("settings.system_default").tag(String?.none)
+                        } else {
+                            ForEach(recorder.microphones, id: \.uniqueID) { device in
+                                Text(device.localizedName).tag(Optional(device.uniqueID))
+                            }
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                GridRow {
+                    Label("settings.microphone_boost", systemImage: "waveform.badge.plus")
+                        .foregroundStyle(.secondary)
+                    Picker("settings.microphone_boost", selection: $recorder.microphoneBoostDB) {
+                        Text("common.off").tag(Float(0))
+                        Text("+6 dB").tag(Float(6))
+                        Text("+12 dB").tag(Float(12))
+                    }
+                    .labelsHidden()
+                }
+
+                GridRow {
+                    Label("settings.save_location", systemImage: "folder")
+                        .foregroundStyle(.secondary)
+                    Button {
+                        recorder.chooseOutputFolder()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(recorder.outputFolderDisplayName)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.caption2)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.borderless)
+                    .help(recorder.outputFolderURL.path)
+                }
+            }
+            .font(.callout)
+            .labelStyle(AlignedIconLabelStyle())
+            .padding(10)
+            .disabled(recorder.isBusy)
+        }
+    }
+}
+
+private struct RecordingActionButton: View {
+    @EnvironmentObject private var recorder: RecorderModel
+
+    var body: some View {
+        Button {
+            Task {
+                if recorder.isRecording {
+                    await recorder.stopRecording()
+                } else {
+                    await recorder.startRecording()
+                }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                if recorder.isPreparing || recorder.isFinishing {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: recorder.isRecording ? "stop.fill" : "record.circle")
+                }
+                Text(recorder.primaryActionTitle)
+            }
+            .padding(.horizontal, 12)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(recorder.isRecording ? .red : .accentColor)
+        .disabled(recorder.isTransitioning)
+    }
+}
+
+private struct RecordingStatusBar: View {
+    @EnvironmentObject private var recorder: RecorderModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: 12) {
+                Image(systemName: recorder.isRecording ? "record.circle.fill" : "waveform")
+                    .foregroundStyle(recorder.isRecording ? .red : .secondary)
+                    .accessibilityHidden(true)
+                Text(recorder.statusText)
+                    .lineLimit(1)
+                if recorder.isRecording || recorder.isFinishing {
+                    Text(recorder.formattedElapsedTime)
+                        .monospacedDigit()
+                }
+                Spacer(minLength: 12)
+                RecordingActionButton()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(.bar)
+        }
+    }
+}
+
+struct RecorderSettingsView: View {
+    @EnvironmentObject private var recorder: RecorderModel
+    @EnvironmentObject private var updater: AppUpdater
+
+    var body: some View {
+        Form {
+            Section("permissions.title") {
+                RecordingPermissionsView()
+            }
+            Section("updates.title") {
+                CheckForUpdatesButton(updater: updater, recorder: recorder)
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 480, height: 310)
+        .task { await recorder.refreshPermissions() }
+    }
+}
+
+private struct RecordingPermissionsView: View {
+    @EnvironmentObject private var recorder: RecorderModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 16) {
                 systemPermissionBadge
                 PermissionBadge(title: "source.microphone", isGranted: recorder.hasMicrophonePermission)
             }
 
             if !recorder.hasAllPermissions {
+                Text(permissionHelp)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 HStack {
                     Button("permissions.grant") {
                         Task { await recorder.requestPermissions() }
                     }
-                    .buttonStyle(.borderedProminent)
                     .disabled(recorder.screenAccess == .checking)
 
                     Button("permissions.open_settings") {
                         recorder.openPrivacySettings()
                     }
-                    .buttonStyle(.borderless)
                 }
-                Text(permissionHelp)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -140,143 +369,6 @@ struct ContentView: View {
         case .granted: String(localized: "permissions.help")
         }
     }
-
-    private var meterSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("levels.title")
-                    .font(.headline)
-                Spacer()
-                Button(recorder.isMonitoring ? "monitor.stop" : "monitor.start") {
-                    Task { await recorder.toggleInputMonitoring() }
-                }
-                .buttonStyle(.borderless)
-                .disabled(recorder.isTransitioning || recorder.isRecording)
-            }
-            LevelRow(title: "source.system_audio", icon: "macbook", level: recorder.systemLevel)
-            LevelRow(title: "source.microphone", icon: "mic", level: recorder.microphoneLevel)
-            Text(meterHelpText)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-    }
-
-    private var meterHelpText: LocalizedStringKey {
-        if recorder.isRecording { return "levels.help.recording" }
-        if recorder.isMonitoring { return "levels.help.monitoring" }
-        return "levels.help.idle"
-    }
-
-    private var settingsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("settings.title")
-                .font(.headline)
-
-            HStack {
-                Label("settings.microphone", systemImage: "mic")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Picker("settings.microphone", selection: $recorder.selectedMicrophoneID) {
-                    if recorder.microphones.isEmpty {
-                        Text("settings.system_default").tag(String?.none)
-                    } else {
-                        ForEach(recorder.microphones, id: \.uniqueID) { device in
-                            Text(device.localizedName).tag(Optional(device.uniqueID))
-                        }
-                    }
-                }
-                .labelsHidden()
-                .frame(width: 230, alignment: .trailing)
-                .disabled(recorder.isBusy)
-            }
-
-            HStack {
-                Label("settings.microphone_boost", systemImage: "waveform.badge.plus")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Picker("settings.microphone_boost", selection: $recorder.microphoneBoostDB) {
-                    Text("common.off").tag(Float(0))
-                    Text("+6 dB").tag(Float(6))
-                    Text("+12 dB").tag(Float(12))
-                }
-                .labelsHidden()
-                .frame(width: 230, alignment: .trailing)
-                .disabled(recorder.isBusy)
-            }
-
-            HStack {
-                Label("settings.save_location", systemImage: "folder")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button {
-                    recorder.chooseOutputFolder()
-                } label: {
-                    HStack(spacing: 5) {
-                        Text(recorder.outputFolderDisplayName)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.caption2)
-                    }
-                }
-                .buttonStyle(.borderless)
-                .frame(width: 230, alignment: .trailing)
-                .help(recorder.outputFolderURL.path)
-                .disabled(recorder.isBusy)
-            }
-            .font(.callout)
-        }
-        .padding(14)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-    }
-
-    private var actionSection: some View {
-        VStack(spacing: 12) {
-            Button {
-                Task {
-                    if recorder.isRecording {
-                        await recorder.stopRecording()
-                    } else {
-                        await recorder.startRecording()
-                    }
-                }
-            } label: {
-                HStack(spacing: 9) {
-                    if recorder.isPreparing || recorder.isFinishing {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: recorder.isRecording ? "stop.fill" : "record.circle")
-                    }
-                    Text(recorder.primaryActionTitle)
-                        .font(.system(size: 17, weight: .semibold))
-                }
-                .frame(width: 240, height: 38)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(recorder.isRecording ? .red : .accentColor)
-            .controlSize(.regular)
-            .disabled(recorder.isTransitioning)
-
-            Button {
-                openWindow(id: "transcription")
-            } label: {
-                Label("transcription.open", systemImage: "text.badge.plus")
-            }
-            .buttonStyle(.bordered)
-
-            if let lastRecordingURL = recorder.lastRecordingURL {
-                Button("recording.reveal_recent") {
-                    recorder.reveal(lastRecordingURL)
-                }
-                .buttonStyle(.link)
-            } else {
-                Text("recording.headphones_tip")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
 }
 
 private struct PermissionBadge: View {
@@ -284,13 +376,9 @@ private struct PermissionBadge: View {
     let isGranted: Bool
 
     var body: some View {
-        HStack(spacing: 5) {
-            Image(systemName: isGranted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                .foregroundStyle(isGranted ? .green : .orange)
-            Text(title)
-                .foregroundStyle(.secondary)
-        }
-        .font(.caption.weight(.medium))
+        Label(title, systemImage: isGranted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+            .foregroundStyle(isGranted ? .green : .orange)
+            .font(.caption.weight(.medium))
     }
 }
 
@@ -301,26 +389,24 @@ private struct LevelRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .frame(width: 24, alignment: .center)
-                Text(title)
-                    .frame(width: 64, alignment: .leading)
-            }
-            .font(.callout)
-            .frame(width: 98, alignment: .leading)
+            Label(title, systemImage: icon)
+                .labelStyle(AlignedIconLabelStyle())
+                .font(.callout)
+                .frame(width: 112, alignment: .leading)
 
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.14))
-                    Capsule()
-                        .fill(level > 0.82 ? Color.orange : Color.accentColor)
-                        .frame(width: geometry.size.width * level)
-                        .animation(.linear(duration: 0.08), value: level)
-                }
-            }
-            .frame(height: 8)
+            ProgressView(value: level, total: 1)
+                .tint(level > 0.82 ? .orange : .accentColor)
+                .accessibilityLabel(Text(title))
+        }
+    }
+}
+
+private struct AlignedIconLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 10) {
+            configuration.icon
+                .frame(width: 24)
+            configuration.title
         }
     }
 }

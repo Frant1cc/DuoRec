@@ -4,26 +4,40 @@ import SwiftUI
 struct DuoRecApp: App {
     @NSApplicationDelegateAdaptor(RecorderApplicationDelegate.self) private var appDelegate
     @StateObject private var recorder = RecorderModel()
+    @StateObject private var updater = AppUpdater()
 
     var body: some Scene {
         WindowGroup("DuoRec") {
             ContentView()
                 .environmentObject(recorder)
-                .onAppear { appDelegate.recorder = recorder }
+                .environmentObject(updater)
+                .onAppear {
+                    appDelegate.recorder = recorder
+                    updater.attach(to: recorder)
+                }
         }
-        .windowResizability(.contentSize)
+        .defaultSize(width: 900, height: 620)
+        .windowResizability(.contentMinSize)
+        .commands {
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesButton(updater: updater, recorder: recorder)
+            }
+        }
 
-        Window("transcription.title", id: "transcription") {
-            TranscriptionView()
+        Settings {
+            RecorderSettingsView()
                 .environmentObject(recorder)
+                .environmentObject(updater)
         }
-        .defaultSize(width: 720, height: 560)
-        .defaultLaunchBehavior(.suppressed)
 
         MenuBarExtra {
             MenuBarRecorderView()
                 .environmentObject(recorder)
-                .onAppear { appDelegate.recorder = recorder }
+                .environmentObject(updater)
+                .onAppear {
+                    appDelegate.recorder = recorder
+                    updater.attach(to: recorder)
+                }
         } label: {
             if recorder.isRecording {
                 Label {
@@ -89,6 +103,7 @@ final class RecorderApplicationDelegate: NSObject, NSApplicationDelegate {
 
 private struct MenuBarRecorderView: View {
     @EnvironmentObject private var recorder: RecorderModel
+    @EnvironmentObject private var updater: AppUpdater
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -131,9 +146,23 @@ private struct MenuBarRecorderView: View {
                 }
                 .buttonStyle(.link)
             }
+
+            CheckForUpdatesButton(updater: updater, recorder: recorder)
+                .buttonStyle(.link)
         }
         .padding(16)
         .frame(width: 280)
+    }
+}
+
+struct CheckForUpdatesButton: View {
+    @ObservedObject var updater: AppUpdater
+    @ObservedObject var recorder: RecorderModel
+
+    var body: some View {
+        Button("updates.check") { updater.checkForUpdates() }
+            .disabled(!updater.canCheckForUpdates || recorder.isBusy || recorder.isUpdateSessionActive)
+            .help(String(localized: "updates.help"))
     }
 }
 

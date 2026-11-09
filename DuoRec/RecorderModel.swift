@@ -27,6 +27,7 @@ final class RecorderModel: ObservableObject {
     @Published private(set) var lastRecordingURL: URL?
     @Published private(set) var outputFolderURL: URL
     @Published private(set) var isMonitoring = false
+    @Published var isUpdateSessionActive = false
     @Published var microphoneBoostDB: Float {
         didSet { UserDefaults.standard.set(microphoneBoostDB, forKey: Self.microphoneBoostKey) }
     }
@@ -66,7 +67,7 @@ final class RecorderModel: ObservableObject {
     var isPreparing: Bool { state == .preparing }
     var isFinishing: Bool { state == .finishing }
     var isBusy: Bool { state != .idle || isMonitoring || isTerminating }
-    var isTransitioning: Bool { state == .preparing || state == .finishing || isTerminating }
+    var isTransitioning: Bool { state == .preparing || state == .finishing || isTerminating || isUpdateSessionActive }
     var hasAllPermissions: Bool { hasScreenPermission && hasMicrophonePermission }
     var hasScreenPermission: Bool { screenAccess == .granted }
 
@@ -79,7 +80,8 @@ final class RecorderModel: ObservableObject {
     }
 
     var statusText: String {
-        switch state {
+        if isUpdateSessionActive { return String(localized: "updates.in_progress") }
+        return switch state {
         case .idle:
             isMonitoring
                 ? String(localized: "status.monitoring")
@@ -199,7 +201,7 @@ final class RecorderModel: ObservableObject {
     }
 
     func startRecording() async {
-        guard state == .idle, !isTerminating else { return }
+        guard state == .idle, !isTerminating, !isUpdateSessionActive else { return }
         state = .preparing
         let task = Task { await prepareRecording() }
         preparationTask = task
@@ -271,7 +273,7 @@ final class RecorderModel: ObservableObject {
     }
 
     func toggleInputMonitoring() async {
-        guard state == .idle, !isTerminating else { return }
+        guard state == .idle, !isTerminating, !isUpdateSessionActive else { return }
         state = .preparing
         let task = Task {
             if isMonitoring {

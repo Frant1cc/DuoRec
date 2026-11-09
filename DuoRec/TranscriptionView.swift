@@ -15,6 +15,7 @@ final class TranscriptionModel: ObservableObject {
     }
 
     @Published var text = ""
+    @Published var filter: TranscriptFilter = .all
     @Published private(set) var segments: [TranscriptSegment] = []
     @Published private(set) var usesSourceTimeline = false
     @Published private(set) var fileName: String?
@@ -49,6 +50,7 @@ final class TranscriptionModel: ObservableObject {
         analyzer = nil
         phase = .idle
         text = ""
+        filter = .all
         segments = []
         usesSourceTimeline = false
         fileName = nil
@@ -214,27 +216,15 @@ private enum TranscriptionError: LocalizedError {
 
 struct TranscriptionView: View {
     @EnvironmentObject private var recorder: RecorderModel
-    @StateObject private var model = TranscriptionModel()
+    @ObservedObject var model: TranscriptionModel
     @State private var selectedText = ""
-    @State private var filter: TranscriptFilter = .all
+    @State private var copyFeedback: CopyFeedback?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("transcription.title")
-                        .font(.title2.weight(.semibold))
-                    Text("transcription.subtitle")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button("transcription.import") {
-                    model.chooseFile(outputFolderURL: recorder.outputFolderURL)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(model.isWorking)
-            }
+            Text("transcription.subtitle")
+                .font(.callout)
+                .foregroundStyle(.secondary)
 
             HStack(spacing: 10) {
                 if model.isWorking {
@@ -265,7 +255,7 @@ struct TranscriptionView: View {
             .foregroundStyle(.secondary)
 
             if model.usesSourceTimeline {
-                Picker("transcription.filter.title", selection: $filter) {
+                Picker("transcription.filter.title", selection: $model.filter) {
                     Text("transcription.filter.all").tag(TranscriptFilter.all)
                     Text("source.system_audio").tag(TranscriptFilter.system)
                     Text("source.microphone").tag(TranscriptFilter.microphone)
@@ -275,18 +265,26 @@ struct TranscriptionView: View {
             }
 
             Group {
-                if model.usesSourceTimeline {
+                if model.fileName == nil {
+                    ContentUnavailableView {
+                        Label("transcription.empty.title", systemImage: "doc.text")
+                    } description: {
+                        Text("transcription.empty.description")
+                    }
+                } else if model.usesSourceTimeline {
                     TranscriptTextView(
                         text: .constant(filteredTimelineText),
                         isEditable: false,
-                        selectedText: $selectedText
+                        selectedText: $selectedText,
+                        onCopy: reportCopyResult
                     )
                 } else {
                     ZStack(alignment: .topLeading) {
                         TranscriptTextView(
                             text: $model.text,
                             isEditable: !model.isWorking,
-                            selectedText: $selectedText
+                            selectedText: $selectedText,
+                            onCopy: reportCopyResult
                         )
                         if model.text.isEmpty {
                             Text("transcription.placeholder")
@@ -303,24 +301,59 @@ struct TranscriptionView: View {
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator))
 
             HStack {
-                Text("transcription.copy_hint")
+                if let copyFeedback {
+                    Label(
+                        copyFeedback.succeeded ? "transcription.copied" : "transcription.copy_failed",
+                        systemImage: copyFeedback.succeeded ? "checkmark.circle.fill" : "exclamationmark.circle"
+                    )
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(copyFeedback.succeeded ? .green : .orange)
+                } else {
+                    Text("transcription.copy_hint")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
-                Button("transcription.copy_selected") { copySelected() }
-                    .disabled(selectedText.isEmpty || model.isWorking)
-                Button("transcription.copy_all") { copy(allVisibleText) }
-                    .disabled(allVisibleText.isEmpty || model.isWorking)
             }
         }
-        .padding(22)
-        .frame(minWidth: 580, minHeight: 440)
-        .onDisappear { model.cancel() }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    model.chooseFile(outputFolderURL: recorder.outputFolderURL)
+                } label: {
+                    Label("transcription.import", systemImage: "square.and.arrow.down")
+                        .labelStyle(.titleAndIcon)
+                }
+                .help("transcription.import_help")
+                .disabled(model.isWorking)
+
+                Button(action: copySelected) {
+                    Label("transcription.copy", systemImage: "doc.on.doc")
+                        .labelStyle(.titleAndIcon)
+                }
+                .help("transcription.copy_help")
+                .disabled(selectedText.isEmpty || model.isWorking)
+            }
+        }
         .onChange(of: model.fileName) { _, _ in
             selectedText = ""
-            filter = .all
+            copyFeedback = nil
         }
-        .onChange(of: filter) { _, _ in selectedText = "" }
+        .onChange(of: model.filter) { _, _ in
+            selectedText = ""
+            copyFeedback = nil
+        }
+        .task(id: copyFeedback?.id) {
+            guard copyFeedback != nil else { return }
+            do {
+                try await Task.sleep(for: .seconds(3))
+                copyFeedback = nil
+            } catch {
+                // A new copy action or page navigation cancels the previous timeout.
+            }
+        }
         .alert("transcription.error.title", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
@@ -333,7 +366,7 @@ struct TranscriptionView: View {
 
     private var filteredTimelineText: String {
         TranscriptTimeline.grouped(model.segments)
-            .filter { filter.includes($0.source) }
+            .filter { model.filter.includes($0.source) }
             .map { segment in
                 let sourceName = segment.source == .system
                     ? String(localized: "source.system_audio")
@@ -347,22 +380,30 @@ struct TranscriptionView: View {
             .joined(separator: "\n\n")
     }
 
-    private var allVisibleText: String {
-        model.usesSourceTimeline ? filteredTimelineText : model.text
-    }
-
     private func copySelected() {
         guard !selectedText.isEmpty else { return }
-        copy(selectedText)
+        reportCopyResult(TranscriptClipboard.copy(selectedText))
     }
 
-    private func copy(_ value: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(value, forType: .string)
+    private func reportCopyResult(_ succeeded: Bool) {
+        copyFeedback = CopyFeedback(succeeded: succeeded)
     }
 }
 
-private enum TranscriptFilter: Hashable {
+private struct CopyFeedback {
+    let id = UUID()
+    let succeeded: Bool
+}
+
+private enum TranscriptClipboard {
+    static func copy(_ value: String) -> Bool {
+        guard !value.isEmpty else { return false }
+        NSPasteboard.general.clearContents()
+        return NSPasteboard.general.setString(value, forType: .string)
+    }
+}
+
+enum TranscriptFilter: Hashable {
     case all
     case system
     case microphone
@@ -380,6 +421,7 @@ private struct TranscriptTextView: NSViewRepresentable {
     @Binding var text: String
     let isEditable: Bool
     @Binding var selectedText: String
+    var onCopy: (Bool) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text, selectedText: $selectedText)
@@ -390,7 +432,8 @@ private struct TranscriptTextView: NSViewRepresentable {
         scrollView.hasVerticalScroller = true
         scrollView.drawsBackground = false
 
-        let textView = NSTextView()
+        let textView = CopyFeedbackTextView()
+        textView.onCopy = onCopy
         textView.frame = scrollView.contentView.bounds
         textView.minSize = NSSize(width: 0, height: 0)
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
@@ -411,7 +454,8 @@ private struct TranscriptTextView: NSViewRepresentable {
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        guard let textView = scrollView.documentView as? NSTextView else { return }
+        guard let textView = scrollView.documentView as? CopyFeedbackTextView else { return }
+        textView.onCopy = onCopy
         textView.isEditable = isEditable
         if textView.string != text {
             context.coordinator.isUpdating = true
@@ -448,5 +492,15 @@ private struct TranscriptTextView: NSViewRepresentable {
                 range: textView.selectedRange()
             ) ?? ""
         }
+    }
+}
+
+private final class CopyFeedbackTextView: NSTextView {
+    var onCopy: ((Bool) -> Void)?
+
+    override func copy(_ sender: Any?) {
+        guard let value = TranscriptSelection.selectedText(in: string, range: selectedRange()),
+              !value.isEmpty else { return }
+        onCopy?(TranscriptClipboard.copy(value))
     }
 }

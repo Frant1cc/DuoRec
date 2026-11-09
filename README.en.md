@@ -66,11 +66,11 @@ Use headphones to keep speaker audio from being recorded again through your micr
 
 ## Turn recordings into text
 
-Click **Transcribe Recording** and choose your recorded MP4 to get a transcript in time order, labeled by audio source. The app transcribes the source tracks separately and skips the mix to avoid duplicate text. Filter by **System Audio** or **Microphone**, then copy the passages you need for meeting notes, interview write-ups, or study notes.
+Select **Transcription** in the sidebar, click **Import Audio**, and choose your recorded MP4 to get a transcript in time order, labeled by audio source. The app transcribes the source tracks separately and skips the mix to avoid duplicate text. Filter by **System Audio** or **Microphone**, then copy the passages you need for meeting notes, interview write-ups, or study notes.
 
 You can also import ordinary single-track audio. Transcription currently supports **Mandarin Chinese**, even when the interface is in English. Your device must support the required macOS model, which may need to be downloaded on first use. Source labels distinguish the two inputs; they do not identify different speakers within the same input.
 
-Transcript history is not saved. Copy any text you need before closing the transcription window. Older M4A recordings with matching source files can still be imported; see the [user guide](docs/USER_GUIDE.md) (Chinese) for details.
+Switching between Recording and Transcription keeps the current task and text. Transcript history is not saved; copy any text you need before closing the main window. Older M4A recordings with matching source files can still be imported; see the [user guide](docs/USER_GUIDE.md) (Chinese) for details.
 
 ## Learn more
 

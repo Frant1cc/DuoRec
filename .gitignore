@@ -31,3 +31,14 @@ build/
 
 # Local regression checks
 /Tests/
+
+# Private release signing material
+/.local-signing/
+*.p12
+*.pfx
+*.keychain-db
+__pycache__/
+
+# Local-only release guide and tooling
+/docs/UPDATES.md
+/scripts/
