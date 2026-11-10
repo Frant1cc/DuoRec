@@ -28,7 +28,6 @@ private enum WorkspaceSection: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
     @EnvironmentObject private var recorder: RecorderModel
-    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var whisper: WhisperModelStore
     @StateObject private var transcription: TranscriptionModel
     @State private var selection: WorkspaceSection? = .recording
@@ -89,12 +88,8 @@ struct ContentView: View {
             transcription.cancel()
             whisper.cancelTransfer()
         }
-        .onChange(of: scenePhase) { _, newPhase in
-            guard newPhase == .active else { return }
-            recorder.refreshMicrophones()
-            Task { await recorder.refreshPermissions() }
-        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            recorder.refreshMicrophones()
             Task { await recorder.refreshPermissions() }
         }
         .alert("alert.recording_failed.title", isPresented: Binding(
@@ -371,6 +366,10 @@ private struct RecordingPermissionsView: View {
             Label("permissions.check_failed", systemImage: "questionmark.circle")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        case .needsAuthorization:
+            Label("permissions.needs_authorization", systemImage: "lock")
+                .font(.caption)
+                .foregroundStyle(.orange)
         case .granted, .denied:
             PermissionBadge(title: "source.system_audio", isGranted: recorder.hasScreenPermission)
         }
@@ -379,6 +378,7 @@ private struct RecordingPermissionsView: View {
     private var permissionHelp: String {
         switch recorder.screenAccess {
         case .checking: String(localized: "permissions.checking_help")
+        case .needsAuthorization: String(localized: "permissions.request_help")
         case .denied: String(localized: "error.permission.screen_denied")
         case .unavailable(let detail): detail
         case .granted: String(localized: "permissions.help")

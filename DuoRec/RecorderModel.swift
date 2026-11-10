@@ -43,12 +43,19 @@ final class RecorderModel: ObservableObject {
     private var isAccessingSecurityScopedOutput = false
     private var permissionCheckTask: Task<ScreenRecordingAccess, Never>?
     private var permissionRevision = 0
+    private let screenCapturePreflight: () -> Bool
+    private let screenPermissionProbe: () async throws -> Void
     private let permissionLogger = Logger(subsystem: "frant1c.duorec", category: "RecordingPermission")
 
     private static let outputFolderBookmarkKey = "outputFolderBookmark"
     private static let microphoneBoostKey = "microphoneBoostDB"
 
-    init() {
+    init(screenCapturePreflight: @escaping () -> Bool = CGPreflightScreenCaptureAccess,
+         screenPermissionProbe: @escaping () async throws -> Void = {
+             _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+         }) {
+        self.screenCapturePreflight = screenCapturePreflight
+        self.screenPermissionProbe = screenPermissionProbe
         outputFolderURL = Self.defaultOutputFolderURL()
         microphoneBoostDB = UserDefaults.standard.object(forKey: Self.microphoneBoostKey) == nil
             ? 6
@@ -116,7 +123,20 @@ final class RecorderModel: ObservableObject {
 
     func refreshPermissions() async {
         hasMicrophonePermission = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
-        if isRecording || isMonitoring { return }
+        guard !isBusy, permissionCheckTask == nil else { return }
+        // Lifecycle notifications must never enumerate ScreenCaptureKit content:
+        // that API can show a permission dialog and re-activate the app on dismissal.
+        // Preflight is only a hint. A false result must not override a successful
+        // ScreenCaptureKit request or prevent the user from attempting capture.
+        if screenCapturePreflight() {
+            screenAccess = .granted
+        } else if screenAccess == .checking {
+            screenAccess = .needsAuthorization
+        }
+    }
+
+    func requestScreenPermission() async {
+        guard canEditSettings else { return }
         if let permissionCheckTask {
             _ = await permissionCheckTask.value
             return
@@ -125,11 +145,7 @@ final class RecorderModel: ObservableObject {
         screenAccess = .checking
         let revision = permissionRevision
         let task = Task {
-            await ScreenRecordingAccess.check {
-                // Use the same framework as capture: the CoreGraphics preflight can
-                // disagree with ScreenCaptureKit and must not decide this badge.
-                _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            }
+            await ScreenRecordingAccess.check(using: screenPermissionProbe)
         }
         permissionCheckTask = task
         let result = await task.value
@@ -165,11 +181,17 @@ final class RecorderModel: ObservableObject {
     }
 
     func requestPermissions() async {
+        guard canEditSettings else { return }
+        await requestScreenPermission()
+        await requestMicrophonePermission()
+    }
+
+    private func requestMicrophonePermission() async {
         if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
             hasMicrophonePermission = await AVCaptureDevice.requestAccess(for: .audio)
+        } else {
+            hasMicrophonePermission = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
         }
-
-        await refreshPermissions()
         refreshMicrophones()
     }
 
@@ -232,7 +254,9 @@ final class RecorderModel: ObservableObject {
         microphoneLevel = 0
 
         do {
-            await requestPermissions()
+            // makeStream performs the one real screen-access request for this
+            // recording; do not issue a separate permission probe first.
+            await requestMicrophonePermission()
             guard hasMicrophonePermission else {
                 throw RecorderError.permission(String(localized: "error.permission.microphone"))
             }
@@ -296,7 +320,7 @@ final class RecorderModel: ObservableObject {
         errorMessage = nil
 
         do {
-            await requestPermissions()
+            await requestMicrophonePermission()
             guard hasMicrophonePermission else {
                 throw RecorderError.permission(String(localized: "error.permission.microphone"))
             }
@@ -491,6 +515,18 @@ final class RecorderModel: ObservableObject {
     }
 
     private func makeStream(output: CaptureOutput) async throws -> SCStream {
+        if let permissionCheckTask {
+            // A simultaneous click on Grant Permissions already requested access.
+            // If it is denied, do not immediately request it a second time.
+            let result = await permissionCheckTask.value
+            switch result {
+            case .denied:
+                throw RecorderError.permission(String(localized: "error.permission.screen_denied"))
+            case .unavailable(let detail):
+                throw RecorderError.permission(detail)
+            default: break
+            }
+        }
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let display = preferredDisplay(from: content.displays) else {
             throw RecorderError.noDisplay

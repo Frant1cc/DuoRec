@@ -22,6 +22,8 @@ build_check() {
 }
 build_check Checks/StateMachineChecks.swift .build/StateMachineChecks/state-machine-checks
 .build/StateMachineChecks/state-machine-checks
+build_check Checks/PermissionChecks.swift .build/StateMachineChecks/permission-checks
+.build/StateMachineChecks/permission-checks
 build_check Checks/WhisperChecks.swift .build/StateMachineChecks/whisper-checks
 .build/StateMachineChecks/whisper-checks
 xcrun swiftc -swift-version 5 -parse-as-library \

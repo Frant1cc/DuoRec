@@ -3,6 +3,7 @@ import Foundation
 
 enum ScreenRecordingAccess: Equatable, Sendable {
     case checking
+    case needsAuthorization
     case granted
     case denied
     case unavailable(String)

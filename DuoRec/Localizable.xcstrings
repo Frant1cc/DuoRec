@@ -1,6 +1,18 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "permissions.needs_authorization" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "System Audio: Authorization Needed" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "系统声音：待授权" } }
+      }
+    },
+    "permissions.request_help" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Screen recording access is requested when you click Grant Permissions, Start Recording, or Test Input. Transcribing existing recordings does not require it." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "点击“授予权限”“开始录音”或“测试输入”时才会请求屏幕与系统声音权限。转写已有录音无需此权限。" } }
+      }
+    },
     "transcription.empty.description" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Click “Import Audio” in the upper-right corner to start transcribing." } },

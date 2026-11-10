@@ -30,6 +30,8 @@
 
 原语言转写集成检查可通过 `DUOREC_LANGUAGE_MODEL=/path/to/ggml-small.bin sh Checks/run.sh` 启用，需要已下载的原版 small 多语言模型及 macOS 的 Samantha、Tingting、Kyoko 语音。检查使用系统语音合成测试录音，验证中、英、日语，单轨内双向切换语言、超过 30 秒后切换语言、时间戳、进度与原生推理取消；不使用麦克风或下载模型。
 
+权限流程将静默状态查询与主动请求分开：`refreshPermissions` 仅调用 CoreGraphics 预检查；只有用户点击授权或开始采集时才调用 ScreenCaptureKit。否定的预检查不覆盖实际采集已确认的授权，实际采集不受预检查结果阻挡。`Checks/PermissionChecks.swift` 使用替身验证启动／激活／设置查询不请求权限、主动请求去重和拒绝后的行为。
+
 状态所有权、允许的操作、异步取消规则及回归检查见[应用状态机清单](STATE_MACHINES.md)。
 
 ### 使用命令行
