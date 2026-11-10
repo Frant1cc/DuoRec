@@ -35,15 +35,6 @@ nonisolated enum WhisperModel: String, CaseIterable, Identifiable, Sendable {
     var summaryKey: String { "whisper.model.\(rawValue).summary" }
 }
 
-nonisolated enum WhisperLanguage: String, CaseIterable, Identifiable, Sendable {
-    case automatic = "auto"
-    case chinese = "zh"
-    case english = "en"
-
-    var id: String { rawValue }
-    var titleKey: String { "whisper.language.\(rawValue)" }
-}
-
 nonisolated enum WhisperError: LocalizedError {
     case modelMissing, invalidModel, downloadFailed, unreadableAudio, modelLoadFailed, recognitionFailed
 
@@ -90,9 +81,6 @@ final class WhisperModelStore: ObservableObject {
     }
 
     @Published private(set) var selectedModel: WhisperModel
-    @Published var language: WhisperLanguage {
-        didSet { defaults.set(language.rawValue, forKey: "whisper.language") }
-    }
     @Published private(set) var installed: Set<WhisperModel> = []
     @Published private(set) var transfer: Transfer?
     @Published private(set) var pausedDownloads: [WhisperModel: Int64] = [:]
@@ -108,7 +96,9 @@ final class WhisperModelStore: ObservableObject {
         self.directory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("DuoRec/WhisperModels", isDirectory: true)
         selectedModel = defaults.string(forKey: "whisper.model").flatMap(WhisperModel.init(rawValue:)) ?? .largeV3Turbo
-        language = defaults.string(forKey: "whisper.language").flatMap(WhisperLanguage.init(rawValue:)) ?? .automatic
+        // Older versions could force every recording into Chinese or English.
+        // Transcription now always follows the language spoken in the audio.
+        defaults.removeObject(forKey: "whisper.language")
         refreshInstalled()
         refreshPausedDownloads()
     }

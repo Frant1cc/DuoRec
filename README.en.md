@@ -70,7 +70,7 @@ Select **Transcription** in the sidebar, click **Import Audio**, and choose your
 
 First open **Language Recognition** in the sidebar, then select and download one of four multilingual Whisper models: **large-v3, large-v3-turbo, small, or medium**. Each row shows its disk size, download button, and download progress. Downloaded models can be removed to free space. The default is large-v3-turbo. You can also import the matching original ggml model file. Transcription uses local Whisper only, with no API key.
 
-Choose Automatic, Chinese, or English for the audio language. Ordinary single-track audio is supported too. Source labels distinguish the two inputs; they do not identify different speakers within the same input.
+Transcription automatically detects the language of each audio chunk and preserves it without translation, for any language supported by the model. Chinese transcription uses Simplified Chinese. Ordinary single-track audio is supported too. Source labels distinguish the two inputs; they do not identify different speakers within the same input.
 
 Switching between Recording, Transcription, and Language Recognition keeps the current task and text. Transcript history is not saved; copy any text you need before closing the main window. Older M4A recordings with matching source files can still be imported; see the [user guide](docs/USER_GUIDE.md) (Chinese) for details.
 

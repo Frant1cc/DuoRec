@@ -29,3 +29,7 @@ xcrun swiftc -swift-version 5 -parse-as-library \
   DuoRec/WhisperDownloader.swift DuoRec/WhisperModels.swift Checks/WhisperDownloadChecks.swift \
   -o .build/StateMachineChecks/whisper-download-checks
 python3 Checks/check_downloads.py .build/StateMachineChecks/whisper-download-checks
+if [ -n "${DUOREC_LANGUAGE_MODEL:-}" ]; then
+  build_check Checks/WhisperLanguageChecks.swift .build/StateMachineChecks/whisper-language-checks
+  .build/StateMachineChecks/whisper-language-checks "$DUOREC_LANGUAGE_MODEL"
+fi

@@ -26,14 +26,7 @@ struct LanguageRecognitionView: View {
 
                 GroupBox("whisper.language.title") {
                     VStack(alignment: .leading, spacing: 10) {
-                        Picker("whisper.language.title", selection: $models.language) {
-                            ForEach(WhisperLanguage.allCases) { language in
-                                Text(LocalizedStringKey(language.titleKey)).tag(language)
-                            }
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.segmented)
-                        .disabled(transcription.isWorking)
+                        Label("whisper.language.auto", systemImage: "waveform")
                         Text("whisper.language.help").font(.caption).foregroundStyle(.secondary)
                     }
                     .padding(10)

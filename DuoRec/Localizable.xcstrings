@@ -920,45 +920,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automatic"
+            "value": "Automatic · original language"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自动识别"
-          }
-        }
-      }
-    },
-    "whisper.language.zh": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chinese"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "中文"
-          }
-        }
-      }
-    },
-    "whisper.language.en": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "English"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "英语"
+            "value": "自动识别 · 原语言转写"
           }
         }
       }
@@ -968,13 +936,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automatic detects the main language of each track. For recordings in one language, choosing it explicitly can improve reliability. Mixed-language accuracy varies."
+            "value": "Automatically detect the language of each audio chunk and transcribe in that language without translation. Chinese transcription uses Simplified Chinese. Supports the languages recognized by your model. Short phrases and language switches within a sentence may be less accurate."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自动模式判断每条音轨的主要语言。单一语言的录音可指定中文或英语，提高识别稳定性；中英混说效果取决于录音内容。"
+            "value": "自动识别每段语音的语言，按原语言转写，不翻译；中文统一使用简体。支持模型可识别的多种语言；短句、同一句内频繁切换语言仍可能识别不准。"
           }
         }
       }

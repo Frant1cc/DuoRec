@@ -8,6 +8,63 @@ nonisolated struct WhisperPiece: Sendable {
     let text: String
 }
 
+nonisolated enum WhisperTranscriptText {
+    static func normalized(_ text: String, languageCode: String) -> String {
+        // Whisper's Chinese language token does not distinguish script variants.
+        // Normalize Chinese/Cantonese only; applying this to Japanese would also
+        // change its kanji (for example 準備), which must remain in the source form.
+        guard languageCode == "zh" || languageCode == "yue" else { return text }
+        return text.applyingTransform(StringTransform("Traditional-Simplified"), reverse: false) ?? text
+    }
+}
+
+// Re-detect language at pauses instead of locking a whole track to the language
+// heard in its first 30 seconds. Keep ranges contiguous so timestamps and audio
+// coverage survive chunking. This is a pause heuristic, not a speech filter.
+nonisolated enum WhisperAudioChunks {
+    static let sampleRate = 16_000
+    static let maximumSamples = 30 * sampleRate
+
+    static func next(in samples: UnsafeBufferPointer<Float>, from start: Int,
+                     cancellation: WhisperCancellation) throws -> Range<Int> {
+        let limit = min(samples.count, start + maximumSamples)
+        let frameSize = sampleRate / 50 // 20 ms
+        let minimumSamples = 3 * sampleRate
+        let pauseSamples = sampleRate * 3 / 5 // 600 ms
+        var silenceStart: Int?
+        var quietestEnergy = Double.infinity
+        var fallbackEnd = limit
+
+        for frameStart in stride(from: start, to: limit, by: frameSize) {
+            try cancellation.check()
+            let frameEnd = min(limit, frameStart + frameSize)
+            var energy = 0.0
+            for index in frameStart..<frameEnd {
+                let sample = Double(samples[index])
+                energy += sample * sample
+            }
+            energy /= Double(frameEnd - frameStart)
+            if energy < 0.003 * 0.003 {
+                if silenceStart == nil { silenceStart = frameStart }
+                if let silenceStart, silenceStart - start >= minimumSamples,
+                   frameEnd - silenceStart >= pauseSamples {
+                    return start..<(silenceStart + pauseSamples / 2)
+                }
+            } else {
+                silenceStart = nil
+            }
+            // If speech has no long pause, cut at a quiet frame in the final
+            // five seconds rather than always cutting exactly at 30 seconds.
+            if frameStart - start >= maximumSamples - 5 * sampleRate,
+               energy < quietestEnergy {
+                quietestEnergy = energy
+                fallbackEnd = frameEnd
+            }
+        }
+        return start..<(limit == samples.count ? limit : fallbackEnd)
+    }
+}
+
 // C inference is synchronous. This flag is also read by Whisper's worker threads.
 nonisolated final class WhisperCancellation: @unchecked Sendable {
     private let lock = NSLock()
@@ -29,7 +86,7 @@ nonisolated private final class WhisperCallbacks {
 }
 
 protocol WhisperRecognizing: Sendable {
-    func transcribe(url: URL, modelURL: URL, language: WhisperLanguage,
+    func transcribe(url: URL, modelURL: URL,
                     cancellation: WhisperCancellation,
                     progress: @escaping @Sendable (Double) -> Void) async throws -> [WhisperPiece]
 }
@@ -37,7 +94,7 @@ protocol WhisperRecognizing: Sendable {
 // An actor serializes inference, including a cancelled job that is still unwinding.
 // No model loading, audio decoding, or C inference runs on the UI thread.
 actor WhisperTranscriber: WhisperRecognizing {
-    func transcribe(url: URL, modelURL: URL, language: WhisperLanguage,
+    func transcribe(url: URL, modelURL: URL,
                     cancellation: WhisperCancellation,
                     progress: @escaping @Sendable (Double) -> Void) async throws -> [WhisperPiece] {
         try cancellation.check()
@@ -67,10 +124,50 @@ actor WhisperTranscriber: WhisperRecognizing {
         defer { whisper_free(context) }
         try cancellation.check()
 
-        let callbacks = WhisperCallbacks(cancellation: cancellation, progress: progress)
-        let callbackPointer = Unmanaged.passUnretained(callbacks).toOpaque()
+        return try pcm.withUnsafeBytes { bytes in
+            let samples = bytes.bindMemory(to: Float.self)
+            var pieces: [WhisperPiece] = []
+            var start = 0
+            while start < sampleCount {
+                try cancellation.check()
+                let range = try WhisperAudioChunks.next(in: samples, from: start, cancellation: cancellation)
+                let callbacks = WhisperCallbacks(cancellation: cancellation) { fraction in
+                    progress((Double(range.lowerBound) + Double(range.count) * fraction) / Double(sampleCount))
+                }
+                var params = Self.transcriptionParameters()
+                Self.setCallbacks(&params, pointer: Unmanaged.passUnretained(callbacks).toOpaque())
+                let status = withExtendedLifetime(callbacks) {
+                    whisper_full(context, params, samples.baseAddress!.advanced(by: range.lowerBound), Int32(range.count))
+                }
+                try cancellation.check()
+                guard status == 0 else { throw WhisperError.recognitionFailed }
+                let offset = Double(range.lowerBound) / Double(WhisperAudioChunks.sampleRate)
+                let duration = Double(range.count) / Double(WhisperAudioChunks.sampleRate)
+                let languageCode = whisper_lang_str(whisper_full_lang_id(context)).map { String(cString: $0) } ?? ""
+                // whisper_full replaces its results on each call. Read them
+                // before processing the next chunk and restore track-relative time.
+                for index in 0..<whisper_full_n_segments(context) {
+                    guard let string = whisper_full_get_segment_text(context, index) else { continue }
+                    let text = WhisperTranscriptText.normalized(String(cString: string), languageCode: languageCode)
+                    guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+                    let t0 = min(duration, max(0, Double(whisper_full_get_segment_t0(context, index)) / 100))
+                    let t1 = min(duration, max(t0, Double(whisper_full_get_segment_t1(context, index)) / 100))
+                    pieces.append(WhisperPiece(start: offset + t0, end: offset + t1, text: text))
+                }
+                start = range.upperBound
+                progress(Double(start) / Double(sampleCount))
+            }
+            return pieces
+        }
+    }
+
+    nonisolated static func transcriptionParameters() -> whisper_full_params {
         var params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY)
         params.n_threads = Int32(max(1, min(8, ProcessInfo.processInfo.activeProcessorCount - 2)))
+        // nil auto-detects all supported languages on every whisper_full call.
+        // detect_language=true would only detect and return without transcribing.
+        params.language = nil
+        params.detect_language = false
         params.translate = false
         params.no_context = true
         params.no_timestamps = false
@@ -78,42 +175,27 @@ actor WhisperTranscriber: WhisperRecognizing {
         params.print_progress = false
         params.print_timestamps = false
         params.suppress_nst = true
+        return params
+    }
+
+    nonisolated private static func setCallbacks(_ params: inout whisper_full_params,
+                                                pointer: UnsafeMutableRawPointer) {
         params.abort_callback = { data in
             guard let data else { return true }
             return Unmanaged<WhisperCallbacks>.fromOpaque(data).takeUnretainedValue().cancellation.isCancelled
         }
-        params.abort_callback_user_data = callbackPointer
+        params.abort_callback_user_data = pointer
         params.encoder_begin_callback = { _, _, data in
             guard let data else { return false }
             return !Unmanaged<WhisperCallbacks>.fromOpaque(data).takeUnretainedValue().cancellation.isCancelled
         }
-        params.encoder_begin_callback_user_data = callbackPointer
+        params.encoder_begin_callback_user_data = pointer
         params.progress_callback = { _, _, percent, data in
             guard let data else { return }
             let callbacks = Unmanaged<WhisperCallbacks>.fromOpaque(data).takeUnretainedValue()
             if !callbacks.cancellation.isCancelled { callbacks.progress(Double(percent) / 100) }
         }
-        params.progress_callback_user_data = callbackPointer
-
-        let status = language.rawValue.withCString { languagePointer in
-            params.language = languagePointer
-            return withExtendedLifetime(callbacks) {
-                pcm.withUnsafeBytes { bytes in
-                    whisper_full(context, params, bytes.bindMemory(to: Float.self).baseAddress, Int32(sampleCount))
-                }
-            }
-        }
-        try cancellation.check()
-        guard status == 0 else { throw WhisperError.recognitionFailed }
-        let duration = Double(sampleCount) / 16_000
-        return (0..<whisper_full_n_segments(context)).compactMap { index in
-            guard let string = whisper_full_get_segment_text(context, index) else { return nil }
-            let text = String(cString: string)
-            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-            let start = min(duration, max(0, Double(whisper_full_get_segment_t0(context, index)) / 100))
-            let end = min(duration, max(start, Double(whisper_full_get_segment_t1(context, index)) / 100))
-            return WhisperPiece(start: start, end: end, text: text)
-        }
+        params.progress_callback_user_data = pointer
     }
 
     private func decodeAudio(_ url: URL, to destination: URL, cancellation: WhisperCancellation) async throws {

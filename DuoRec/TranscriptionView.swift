@@ -27,7 +27,6 @@ final class TranscriptionModel: ObservableObject {
     private let engine: any WhisperRecognizing
     private var cancellation = WhisperCancellation()
     private var activeModel: WhisperModel = .largeV3Turbo
-    private var activeLanguage: WhisperLanguage = .automatic
     private var trackID = UUID()
     @Published private(set) var progress: Double = 0
     @Published private(set) var runningModelName: String?
@@ -84,7 +83,6 @@ final class TranscriptionModel: ObservableObject {
         cancellation = WhisperCancellation()
         let runCancellation = cancellation
         activeModel = models.selectedModel
-        activeLanguage = models.language
         runningModelName = activeModel.rawValue
 
         let task = Task {
@@ -161,7 +159,7 @@ final class TranscriptionModel: ObservableObject {
         phase = .transcribing
         progress = 0
         let pieces = try await engine.transcribe(
-            url: url, modelURL: modelURL, language: activeLanguage, cancellation: cancellation
+            url: url, modelURL: modelURL, cancellation: cancellation
         ) { [weak self] value in
             Task { @MainActor [weak self] in
                 guard let self, self.documentID == currentGeneration,
@@ -218,7 +216,7 @@ struct TranscriptionView: View {
                 .pickerStyle(.menu)
                 .fixedSize()
                 .disabled(model.isWorking)
-                Text(LocalizedStringKey(models.language.titleKey))
+                Text("whisper.language.auto")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
             }
