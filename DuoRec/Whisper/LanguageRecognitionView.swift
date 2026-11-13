@@ -9,10 +9,8 @@ struct LanguageRecognitionView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("whisper.title").font(.title2.weight(.semibold))
-                    Text("whisper.subtitle").font(.callout).foregroundStyle(.secondary)
-                }
+                Text("navigation.language_recognition")
+                    .font(.title2.weight(.semibold))
 
                 GroupBox("whisper.models") {
                     VStack(spacing: 0) {
@@ -24,22 +22,9 @@ struct LanguageRecognitionView: View {
                     .padding(.horizontal, 12)
                 }
 
-                GroupBox("whisper.language.title") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Label("whisper.language.auto", systemImage: "waveform")
-                        Text("whisper.language.help").font(.caption).foregroundStyle(.secondary)
-                    }
-                    .padding(10)
-                }
-
-                HStack {
-                    Label("whisper.local_only", systemImage: "lock.shield")
-                        .font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("whisper.import_model", action: importModel)
-                        .disabled(models.isTransferring || models.isReady || transcription.isWorking)
-                }
-                Text("whisper.storage_help").font(.caption).foregroundStyle(.secondary)
+                Button("whisper.import_model", action: importModel)
+                    .disabled(models.isTransferring || models.isReady || transcription.isWorking)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(28)
             .frame(maxWidth: 760)

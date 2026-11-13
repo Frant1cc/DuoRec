@@ -105,6 +105,8 @@ final class WhisperModelStore: ObservableObject {
 
     var isTransferring: Bool { transfer != nil }
     var isReady: Bool { installed.contains(selectedModel) }
+    var installedModels: [WhisperModel] { WhisperModel.allCases.filter(installed.contains) }
+    var transcriptionModel: WhisperModel? { isReady ? selectedModel : installedModels.first }
 
     func select(_ model: WhisperModel) {
         selectedModel = model

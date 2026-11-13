@@ -24,7 +24,7 @@ final class TranscriptionModel: ObservableObject {
     let models: WhisperModelStore
     private let engine: any WhisperRecognizing
     private var cancellation = WhisperCancellation()
-    private var activeModel: WhisperModel = .largeV3Turbo
+    private var activeModel: WhisperModel?
     private var trackID = UUID()
     @Published private(set) var progress: Double = 0
     @Published private(set) var runningModelName: String?
@@ -83,8 +83,8 @@ final class TranscriptionModel: ObservableObject {
         phase = .preparing
         cancellation = WhisperCancellation()
         let runCancellation = cancellation
-        activeModel = models.selectedModel
-        runningModelName = activeModel.rawValue
+        activeModel = models.transcriptionModel
+        runningModelName = activeModel?.rawValue
 
         let task = Task {
             defer { runCancellation.cancel() }
@@ -165,7 +165,7 @@ final class TranscriptionModel: ObservableObject {
         progressWeight: Double = 1
     ) async throws -> [TranscriptSegment] {
         try requireCurrentGeneration(currentGeneration)
-        guard models.installed.contains(activeModel) else { throw WhisperError.modelMissing }
+        guard let activeModel, models.installed.contains(activeModel) else { throw WhisperError.modelMissing }
         let modelURL = models.modelURL(for: activeModel)
         let currentTrackID = UUID()
         trackID = currentTrackID

@@ -83,6 +83,12 @@
         }
       }
     },
+    "transcription.model" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Transcription Model" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "转写模型" } }
+      }
+    },
     "transcription.import_help": {
       "localizations": {
         "en": {
@@ -143,22 +149,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置"
-          }
-        }
-      }
-    },
-    "recording.subtitle": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Capture system audio and your microphone in one recording."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "同时记录系统声音和麦克风，保存在一个录音文件中。"
           }
         }
       }
@@ -451,12 +441,6 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择录音保存位置" } }
       }
     },
-    "levels.help.idle" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Test the input before recording to make sure both sources have sound." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "点击“测试输入”，可在录音前确认双方都有声音" } }
-      }
-    },
     "levels.help.monitoring" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Testing the input. No audio will be saved." } },
@@ -551,12 +535,6 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording Access" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音权限" } }
-      }
-    },
-    "recording.headphones_tip" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Wear headphones to prevent speaker audio from being recorded twice." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "建议佩戴耳机，避免扬声器声音被麦克风重复录入" } }
       }
     },
     "recording.raw_tracks_filename" : {
@@ -655,12 +633,6 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "取消" } }
       }
     },
-    "transcription.copy_hint" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Select text, then click Copy or press ⌘C. Use ⌘A to select all." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选中文字后点击“复制”或按 ⌘C；⌘A 可全选。" } }
-      }
-    },
     "transcription.error.no_speech" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "No speech was recognized in this recording." } },
@@ -733,12 +705,6 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "转写完成" } }
       }
     },
-    "transcription.status.idle" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ready to import" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "等待导入" } }
-      }
-    },
     "transcription.status.preparing" : {
       "localizations": {
         "en": {
@@ -759,22 +725,6 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Transcribing…" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在转写…" } }
-      }
-    },
-    "transcription.subtitle" : {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Transcribe locally with Whisper and filter DuoRec recordings by audio source. Choose your model in Language Recognition. Switching pages keeps your text; closing the window clears it."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "使用 Whisper 在本机转写，按来源筛选 DuoRec 录音；可在「语言识别」页选择模型。切换页面保留文字，关闭窗口后清空。"
-          }
-        }
       }
     },
     "transcription.title" : {
@@ -799,50 +749,18 @@
         }
       }
     },
-    "whisper.title": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Whisper Language Recognition"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Whisper 语言识别"
-          }
-        }
-      }
-    },
-    "whisper.subtitle": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose a multilingual Whisper model, download it once, then transcribe offline. The Transcription page uses your selected model."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "选择多语言 Whisper 模型，下载一次即可离线转写。「转写」页会使用当前选中的模型。"
-          }
-        }
-      }
-    },
     "whisper.models": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recognition Model"
+            "value": "Whisper Recognition Model"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "识别模型"
+            "value": "Whisper 识别模型"
           }
         }
       }
@@ -911,70 +829,6 @@
         }
       }
     },
-    "whisper.language.title": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Audio Language"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "录音语言"
-          }
-        }
-      }
-    },
-    "whisper.language.auto": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automatic · original language"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自动识别 · 原语言转写"
-          }
-        }
-      }
-    },
-    "whisper.language.help": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automatically detect the language of each audio chunk and transcribe in that language without translation. Chinese transcription uses Simplified Chinese. Supports the languages recognized by your model. Short phrases and language switches within a sentence may be less accurate."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自动识别每段语音的语言，按原语言转写，不翻译；中文统一使用简体。支持模型可识别的多种语言；短句、同一句内频繁切换语言仍可能识别不准。"
-          }
-        }
-      }
-    },
-    "whisper.local_only": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Audio stays on this Mac"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "录音始终留在本机"
-          }
-        }
-      }
-    },
     "whisper.import_model": {
       "localizations": {
         "en": {
@@ -987,22 +841,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "导入模型…"
-          }
-        }
-      }
-    },
-    "whisper.storage_help": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Model downloads connect to Hugging Face. Files are kept in DuoRec’s Application Support folder. Import a matching original ggml .bin file if you already have one. Removing a model keeps recordings and transcripts."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "模型从 Hugging Face 下载，保存在 DuoRec 的应用支持目录中。也可选中模型后导入对应的原版 ggml .bin 文件。删除模型不会删除录音或转写文字。"
           }
         }
       }
@@ -1140,13 +978,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Download or import the selected model in Language Recognition first."
+            "value": "Download or import a model in Language Recognition first."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请先在「语言识别」页下载或导入选中的模型。"
+            "value": "请先在「语言识别」页下载或导入一个模型。"
           }
         }
       }

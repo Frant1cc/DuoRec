@@ -10,70 +10,60 @@ struct TranscriptionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("transcription.subtitle")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-
-            HStack {
-                Image(systemName: "waveform")
-                Picker("whisper.models", selection: Binding(
-                    get: { models.selectedModel },
-                    set: { models.select($0) }
+            if !models.installed.isEmpty {
+                Picker("transcription.model", selection: Binding(
+                    get: { models.transcriptionModel },
+                    set: { selection in
+                        if let selection { models.select(selection) }
+                    }
                 )) {
-                    ForEach(WhisperModel.allCases) { whisperModel in
-                        Text(verbatim: whisperModel.rawValue).tag(whisperModel)
+                    ForEach(models.installedModels) { whisperModel in
+                        Text(verbatim: whisperModel.rawValue).tag(Optional(whisperModel))
                     }
                 }
-                .labelsHidden()
                 .pickerStyle(.menu)
                 .fixedSize()
                 .disabled(model.isWorking)
-                Text("whisper.language.auto")
-                    .font(.caption).foregroundStyle(.secondary)
-                Spacer()
-            }
-
-            if !models.isReady && !model.isWorking {
+            } else if !model.isWorking {
                 Label("whisper.model_required", systemImage: "arrow.down.circle")
                     .font(.callout).foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 10) {
-                if model.isWorking {
-                    ProgressView().controlSize(.small)
-                    Text(model.phase == .preparing
-                         ? "transcription.status.preparing"
-                         : "transcription.status.transcribing")
-                    if model.phase == .transcribing {
-                        Text(model.progress, format: .percent.precision(.fractionLength(0)))
-                            .monospacedDigit()
-                            .help("whisper.total_progress")
+            if model.phase != .idle {
+                HStack(spacing: 10) {
+                    if model.isWorking {
+                        ProgressView().controlSize(.small)
+                        Text(model.phase == .preparing
+                             ? "transcription.status.preparing"
+                             : "transcription.status.transcribing")
+                        if model.phase == .transcribing {
+                            Text(model.progress, format: .percent.precision(.fractionLength(0)))
+                                .monospacedDigit()
+                                .help("whisper.total_progress")
+                        }
+                    } else if model.phase == .finished {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text("transcription.status.finished")
+                    } else if model.phase == .failed {
+                        Image(systemName: "exclamationmark.circle")
+                            .foregroundStyle(.orange)
+                        Text("transcription.status.failed")
                     }
-                } else if model.phase == .finished {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text("transcription.status.finished")
-                } else if model.phase == .failed {
-                    Image(systemName: "exclamationmark.circle")
-                        .foregroundStyle(.orange)
-                    Text("transcription.status.failed")
-                } else {
-                    Image(systemName: "waveform")
-                    Text("transcription.status.idle")
+                    Spacer()
+                    if let fileName = model.fileName {
+                        Text(fileName)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .help(fileName)
+                    }
+                    if model.isWorking {
+                        Button("transcription.cancel") { model.cancel() }
+                    }
                 }
-                Spacer()
-                if let fileName = model.fileName {
-                    Text(fileName)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .help(fileName)
-                }
-                if model.isWorking {
-                    Button("transcription.cancel") { model.cancel() }
-                }
+                .font(.callout)
+                .foregroundStyle(.secondary)
             }
-            .font(.callout)
-            .foregroundStyle(.secondary)
 
             if model.usesSourceTimeline {
                 Picker("transcription.filter.title", selection: $model.filter) {
@@ -121,24 +111,18 @@ struct TranscriptionView: View {
             .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator))
 
-            HStack {
-                if let copyFeedback {
-                    Label(
-                        copyFeedback.succeeded ? "transcription.copied" : "transcription.copy_failed",
-                        systemImage: copyFeedback.succeeded ? "checkmark.circle.fill" : "exclamationmark.circle"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(copyFeedback.succeeded ? .green : .orange)
-                } else {
-                    Text("transcription.copy_hint")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
+            if let copyFeedback {
+                Label(
+                    copyFeedback.succeeded ? "transcription.copied" : "transcription.copy_failed",
+                    systemImage: copyFeedback.succeeded ? "checkmark.circle.fill" : "exclamationmark.circle"
+                )
+                .font(.caption)
+                .foregroundStyle(copyFeedback.succeeded ? .green : .orange)
             }
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
@@ -148,7 +132,7 @@ struct TranscriptionView: View {
                         .labelStyle(.titleAndIcon)
                 }
                 .help("transcription.import_help")
-                .disabled(model.isWorking || !models.isReady)
+                .disabled(model.isWorking || models.installed.isEmpty)
 
                 Button(action: copySelected) {
                     Label("transcription.copy", systemImage: "doc.on.doc")

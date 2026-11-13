@@ -75,11 +75,15 @@ struct WhisperChecks {
         store.select(.small)
         store.refreshInstalled()
         precondition(!store.isReady, "An unverified model was accepted")
+        precondition(store.installedModels.isEmpty && store.transcriptionModel == nil)
         try WhisperModel.small.sha256.write(to: url.appendingPathExtension("verified"), atomically: true, encoding: .utf8)
         store.refreshInstalled()
         precondition(store.isReady)
         let restored = WhisperModelStore(directory: root, defaults: defaults)
-        precondition(restored.selectedModel == .small && restored.isReady)
+        precondition(restored.selectedModel == .small && restored.isReady && restored.transcriptionModel == .small)
+        store.select(.medium)
+        precondition(store.installedModels == [.small] && store.transcriptionModel == .small && !store.isReady,
+                     "Selecting an unavailable model for import must leave an installed model usable for transcription")
 
         let probe = RecognitionProbe()
         var arrivals = probe.arrivals.makeAsyncIterator()

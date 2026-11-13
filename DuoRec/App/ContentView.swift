@@ -112,12 +112,8 @@ private struct RecordingView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(recorder.statusText)
-                        .font(.title2.weight(.semibold))
-                    Text("recording.subtitle")
-                        .foregroundStyle(.secondary)
-                }
+                Text(recorder.statusText)
+                    .font(.title2.weight(.semibold))
 
                 if !recorder.hasAllPermissions {
                     GroupBox("permissions.title") {
@@ -135,10 +131,6 @@ private struct RecordingView: View {
                         RecordingActionButton()
                             .controlSize(.large)
                     }
-
-                    Text("recording.headphones_tip")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
 
                     if let lastRecordingURL = recorder.lastRecordingURL {
                         Button {
@@ -165,9 +157,11 @@ private struct RecordingView: View {
             VStack(alignment: .leading, spacing: 16) {
                 LevelRow(title: "source.system_audio", icon: "macbook", level: recorder.systemLevel)
                 LevelRow(title: "source.microphone", icon: "mic", level: recorder.microphoneLevel)
-                Text(meterHelpText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if let meterHelpText {
+                    Text(meterHelpText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(10)
         } label: {
@@ -184,10 +178,10 @@ private struct RecordingView: View {
         }
     }
 
-    private var meterHelpText: LocalizedStringKey {
+    private var meterHelpText: LocalizedStringKey? {
         if recorder.isRecording { return "levels.help.recording" }
         if recorder.isMonitoring { return "levels.help.monitoring" }
-        return "levels.help.idle"
+        return nil
     }
 
     private var settingsSection: some View {
