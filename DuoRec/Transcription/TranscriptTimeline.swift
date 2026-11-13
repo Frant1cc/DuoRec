@@ -32,3 +32,17 @@ enum TranscriptTimeline {
         return result
     }
 }
+
+enum TranscriptFilter: Hashable {
+    case all
+    case system
+    case microphone
+
+    func includes(_ source: AudioSource?) -> Bool {
+        switch self {
+        case .all: true
+        case .system: source == .system
+        case .microphone: source == .microphone
+        }
+    }
+}

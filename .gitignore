@@ -29,9 +29,6 @@ build/
 .env.*
 !.env.example
 
-# Local regression checks
-/Tests/
-
 # Private release signing material
 /.local-signing/
 *.p12

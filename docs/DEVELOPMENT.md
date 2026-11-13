@@ -11,6 +11,17 @@
 
 录音使用 Apple 系统框架；转写通过本地 Swift Package `Packages/WhisperCpp` 接入官方 whisper.cpp v1.9.2 XCFramework（固定 SHA-256，包含 arm64 与 x86_64）；应用内更新使用 Sparkle 2。首次构建需要联网获取 Swift Package 依赖。当前已在 Xcode 26.6 下验证构建。
 
+## 源码目录
+
+- `DuoRec/App/`：应用入口、主窗口、菜单栏和更新。
+- `DuoRec/Recording/`：录音状态、权限、保存和退出流程。
+- `DuoRec/Audio/`：音频采集、双轨写入、MP4 导出和音轨提取。
+- `DuoRec/Transcription/`：转写任务、界面和来源时间线。
+- `DuoRec/Whisper/`：模型管理、下载与推理。
+- `DuoRec/Resources/`：图标、本地化和第三方许可。
+- `Packages/WhisperCpp/`：Whisper 引擎的本地 Swift Package。
+- `Tests/`：随源码提供的回归检查与运行脚本。
+
 ## 从源码构建
 
 克隆仓库或下载并解压源码，然后在项目根目录操作。
@@ -26,11 +37,7 @@
 
 模型文件与安装逻辑在 `WhisperModels.swift`，下载任务在 `WhisperDownloader.swift`，Whisper C API、音频解码与后台推理在 `WhisperTranscriber.swift`。模型文件先暂存并验证大小及 SHA-256，成功后才安装；文件长度通过 FileHandle 读取，避免 URL.resourceValues 对持续增长文件的 fileSize 缓存导致误判；下载文件校验失败后保留，支持重新校验。下载使用专用 URLSessionDataDelegate，将数据流写入稳定的 `.bin.partial` 文件；暂停和网络错误保留数据，重启时扫描缓存，继续时从实际文件长度发出 Range 请求并校验 Content-Range。服务器忽略 Range 时先截断再重下，避免错误拼接。连接、传输与暂停分别呈现，无数据请求超时为 30 秒。推理前将音频转换为 16 kHz 单声道 Float32 PCM 并映射读取，结束或取消后清理。推理前按 20 ms 帧检测近静音（RMS ≤ 0.0003），跳过空白并在语音两端保留 200 ms 缓冲；纯静音音轨不加载模型。短暂停顿合并到约 12–30 秒的窗口，至少 1.1 秒的停顿仍分开识别，以保留短句之间重新检测语言的机会。每段不超过 30 秒，复用模型上下文、每段重新自动检测语言（`language = nil`、`detect_language = false`、`translate = false`、`no_context = true`），再将时间戳与进度换算回原始音轨位置，不因跳过静音而前移。界面总进度按所有来源音轨的时长加权，换轨不归零；旧音轨和旧任务的回调不会污染进度。静音门限较保守，不用于过滤有声背景噪声，也不能保证保留低于门限的极弱语音。根据引擎检测到的语言，仅对中文（`zh`）与粤语（`yue`）片段使用系统 Traditional-Simplified 文字转换，统一简体；不对日文等其他语言应用转换，以保留日文汉字。语言参数不再暴露给界面或持久化，启动时清理旧版 `whisper.language` 偏好，避免强制中文或英语。Apple 芯片优先使用 Metal，初始化失败时回退到 Whisper CPU。
 
-运行 `sh Checks/run.sh` 可验证原有状态机与新的 Whisper 缓存、导入错误、取消、任务隔离，以及本机 HTTP 服务上的真实下载进度、持久化暂停、重建下载器后的续传、重定向、Range 异常、响应错误和无数据超时；首次检查会解析引擎构建依赖，不下载识别模型。
-
-原语言转写集成检查可通过 `DUOREC_LANGUAGE_MODEL=/path/to/ggml-small.bin sh Checks/run.sh` 启用，需要已下载的原版 small 多语言模型及 macOS 的 Samantha、Tingting、Kyoko 语音。检查使用系统语音合成测试录音，验证中、英、日语，单轨内双向切换语言、超过 30 秒后切换语言、时间戳、进度与原生推理取消；不使用麦克风或下载模型。
-
-权限流程将静默状态查询与主动请求分开：`refreshPermissions` 仅调用 CoreGraphics 预检查；只有用户点击授权或开始采集时才调用 ScreenCaptureKit。否定的预检查不覆盖实际采集已确认的授权，实际采集不受预检查结果阻挡。`Checks/PermissionChecks.swift` 使用替身验证启动／激活／设置查询不请求权限、主动请求去重和拒绝后的行为。
+权限流程将静默状态查询与主动请求分开：`refreshPermissions` 仅调用 CoreGraphics 预检查；只有用户点击授权或开始采集时才调用 ScreenCaptureKit。否定的预检查不覆盖实际采集已确认的授权，实际采集不受预检查结果阻挡。
 
 状态所有权、允许的操作、异步取消规则及回归检查见[应用状态机清单](STATE_MACHINES.md)。
 
@@ -44,17 +51,21 @@ xcodebuild \
   -scheme DuoRec \
   -configuration Release \
   -destination 'platform=macOS' \
-  -derivedDataPath .build/DerivedData \
+  -derivedDataPath .build/WhisperBuild \
   CODE_SIGN_IDENTITY=- \
   CODE_SIGN_STYLE=Manual \
   build
 
-open .build/DerivedData/Build/Products/Release/DuoRec.app
+open .build/WhisperBuild/Build/Products/Release/DuoRec.app
 ```
 
 此命令使用本机临时签名构建，无需 Apple 开发者账号。它不包含面向其他用户分发所需的 Developer ID 签名与公证。
 
 如需日常使用，可将生成的 `DuoRec.app` 复制到“应用程序”文件夹，再从那里启动和授予权限。更新后也请从同一位置运行，避免切换多个副本造成权限状态混淆。
+
+## 运行回归测试
+
+在项目根目录运行 `sh Tests/run.sh`。需要 Xcode、Python 3 和可用的 macOS 音频编码服务。检查与上面的构建命令共用 `.build/WhisperBuild` 中的依赖，测试产物写入 `.build/Tests`。检查范围和真实模型转写的运行方式见[测试说明](../Tests/README.md)。
 
 ## 应用内更新
 

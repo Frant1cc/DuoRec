@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="DuoRec/Assets.xcassets/AppIcon.appiconset/DuoRecIcon-256.png" alt="DuoRec app icon" width="112" height="112">
+  <img src="DuoRec/Resources/Assets.xcassets/AppIcon.appiconset/DuoRecIcon-256.png" alt="DuoRec app icon" width="112" height="112">
 </p>
 
 <h1 align="center">DuoRec</h1>
@@ -80,4 +80,4 @@ Switching between Recording, Transcription, and Language Recognition keeps the c
 - [Build & development](docs/DEVELOPMENT.md) (Chinese): full build instructions, requirements, and regression checks.
 - [Report an issue](https://github.com/Frant1cc/DuoRec/issues): feedback and pull requests are welcome.
 
-DuoRec is open source under the [MIT License](LICENSE). Speech recognition uses [whisper.cpp](https://github.com/ggml-org/whisper.cpp) and OpenAI Whisper; see [WhisperNotices.txt](DuoRec/WhisperNotices.txt).
+DuoRec is open source under the [MIT License](LICENSE). Speech recognition uses [whisper.cpp](https://github.com/ggml-org/whisper.cpp) and OpenAI Whisper; see [WhisperNotices.txt](DuoRec/Resources/WhisperNotices.txt).

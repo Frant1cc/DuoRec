@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="DuoRec/Assets.xcassets/AppIcon.appiconset/DuoRecIcon-256.png" alt="DuoRec 应用图标" width="112" height="112">
+  <img src="DuoRec/Resources/Assets.xcassets/AppIcon.appiconset/DuoRecIcon-256.png" alt="DuoRec 应用图标" width="112" height="112">
 </p>
 
 <h1 align="center">DuoRec</h1>
@@ -80,4 +80,4 @@ open DuoRec.xcodeproj
 - [构建与开发](docs/DEVELOPMENT.md)：完整构建步骤、环境要求与回归检查。
 - [反馈问题](https://github.com/Frant1cc/DuoRec/issues)：欢迎反馈使用体验或提交 Pull Request。
 
-DuoRec 使用 [MIT License](LICENSE) 开源。语音识别使用 [whisper.cpp](https://github.com/ggml-org/whisper.cpp) 和 OpenAI Whisper；许可声明见 [WhisperNotices.txt](DuoRec/WhisperNotices.txt)。
+DuoRec 使用 [MIT License](LICENSE) 开源。语音识别使用 [whisper.cpp](https://github.com/ggml-org/whisper.cpp) 和 OpenAI Whisper；许可声明见 [WhisperNotices.txt](DuoRec/Resources/WhisperNotices.txt)。

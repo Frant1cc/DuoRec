@@ -9,4 +9,4 @@ The four multilingual ggml model files are downloaded separately by the app from
 `ggerganov/whisper.cpp` on Hugging Face. Expected byte lengths and SHA-256 hashes
 are recorded in `DuoRec/WhisperModels.swift`. Models are not bundled into the app.
 
-See `DuoRec/WhisperNotices.txt` for the engine and model license notices.
+See `DuoRec/Resources/WhisperNotices.txt` for the engine and model license notices.
