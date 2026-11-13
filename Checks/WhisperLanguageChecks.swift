@@ -32,6 +32,22 @@ struct WhisperLanguageChecks {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("DuoRec-Languages-\(UUID())")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
+        let silenceURL = root.appendingPathComponent("silence.wav")
+        let format = AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1)!
+        let silence = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 16_000 * 60)!
+        silence.frameLength = silence.frameCapacity
+        silence.floatChannelData![0].initialize(repeating: 0, count: Int(silence.frameLength))
+        do {
+            let file = try AVAudioFile(forWriting: silenceURL, settings: format.settings)
+            try file.write(from: silence)
+        }
+        let silentProgress = ProgressProbe()
+        let silentPieces = try await WhisperTranscriber().transcribe(
+            url: silenceURL, modelURL: root.appendingPathComponent("deliberately-missing-model.bin"),
+            cancellation: WhisperCancellation(), progress: { silentProgress.record($0) })
+        precondition(silentPieces.isEmpty, "Silent audio produced text")
+        silentProgress.checkFinished()
+        log("PASS: 60 s silence finishes without loading a model")
         let fixtures = [
             ("english", "Samantha", "Hello everyone. The meeting starts at nine tomorrow morning. Please bring your notes."),
             ("chinese", "Tingting", "大家好，明天上午九点开会。请大家提前准备好会议材料，我们一起讨论新的工作计划。"),
@@ -70,6 +86,7 @@ struct WhisperLanguageChecks {
             let pieces = try await recognize(url, model: modelURL, engine: engine)
             let text = pieces.map(\.text).joined()
             log("TRANSCRIPT \(name): \(text)")
+            precondition(pieces.allSatisfy { $0.start >= 7.5 }, "Skipping leading silence shifted timestamps")
             for piece in pieces { log("TIMESTAMP \(piece.start)...\(piece.end): \(piece.text)") }
             precondition(text.lowercased().contains("meeting") && containsChinese(text))
             // Inspect Chinese pieces only: Japanese kanji must retain their form.
@@ -114,7 +131,7 @@ struct WhisperLanguageChecks {
     private static func concatenate(_ urls: [URL], to destination: URL) async throws -> [Double] {
         let composition = AVMutableComposition()
         let track = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)!
-        var cursor = CMTime.zero
+        var cursor = CMTime(seconds: 8, preferredTimescale: 16_000)
         var starts: [Double] = []
         for url in urls {
             let asset = AVURLAsset(url: url)

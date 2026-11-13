@@ -490,6 +490,7 @@ enum AudioTrackExtractor {
         let url: URL
         let startTime: TimeInterval
         let firstMediaTime: TimeInterval
+        let duration: TimeInterval
     }
 
     static func companionURL(for mixedRecordingURL: URL) -> URL {
@@ -555,7 +556,8 @@ enum AudioTrackExtractor {
                     source: source,
                     url: destination,
                     startTime: timeRange.start.seconds,
-                    firstMediaTime: firstMediaTime
+                    firstMediaTime: firstMediaTime,
+                    duration: timeRange.duration.seconds
                 ))
             }
             return extracted

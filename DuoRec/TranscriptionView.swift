@@ -32,13 +32,16 @@ final class TranscriptionModel: ObservableObject {
     @Published private(set) var runningModelName: String?
     @Published private(set) var documentID = UUID()
     private let sourceResolver: (URL) async throws -> URL?
+    private let trackExtractor: (URL, URL) async throws -> [AudioTrackExtractor.Track]
 
     init(models: WhisperModelStore? = nil,
          engine: (any WhisperRecognizing)? = nil,
-         sourceResolver: @escaping (URL) async throws -> URL? = AudioTrackExtractor.transcriptionSourceURL) {
+         sourceResolver: @escaping (URL) async throws -> URL? = AudioTrackExtractor.transcriptionSourceURL,
+         trackExtractor: @escaping (URL, URL) async throws -> [AudioTrackExtractor.Track] = AudioTrackExtractor.extractTracks) {
         self.models = models ?? WhisperModelStore()
         self.engine = engine ?? WhisperTranscriber()
         self.sourceResolver = sourceResolver
+        self.trackExtractor = trackExtractor
     }
 
     var isWorking: Bool { phase == .preparing || phase == .transcribing }
@@ -107,6 +110,7 @@ final class TranscriptionModel: ObservableObject {
                     )
                 }
                 guard documentID == currentGeneration, !Task.isCancelled else { return }
+                progress = 1
                 phase = .finished
                 let hasSpeech = usesSourceTimeline ? !segments.isEmpty : !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 if !hasSpeech { errorMessage = String(localized: "transcription.error.no_speech") }
@@ -129,9 +133,15 @@ final class TranscriptionModel: ObservableObject {
             .appendingPathComponent("DuoRec-Transcription-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: temporaryFolder) }
 
-        let tracks = try await AudioTrackExtractor.extractTracks(in: url, to: temporaryFolder)
+        let tracks = try await trackExtractor(url, temporaryFolder)
         try requireCurrentGeneration(currentGeneration)
         guard !tracks.isEmpty else { throw WhisperError.unreadableAudio }
+        let totalDuration = tracks.reduce(0) { $0 + $1.duration }
+        guard totalDuration.isFinite, totalDuration > 0,
+              tracks.allSatisfy({ $0.duration.isFinite && $0.duration > 0 }) else {
+            throw WhisperError.unreadableAudio
+        }
+        var completedDuration = 0.0
         for track in tracks {
             try requireCurrentGeneration(currentGeneration)
             _ = try await transcribeAudioFile(
@@ -139,8 +149,11 @@ final class TranscriptionModel: ObservableObject {
                 source: track.source,
                 timeOffset: track.startTime,
                 firstMediaTime: track.firstMediaTime,
-                generation: currentGeneration
+                generation: currentGeneration,
+                progressStart: completedDuration / totalDuration,
+                progressWeight: track.duration / totalDuration
             )
+            completedDuration += track.duration
         }
     }
 
@@ -149,7 +162,9 @@ final class TranscriptionModel: ObservableObject {
         source: AudioSource?,
         timeOffset: TimeInterval,
         firstMediaTime: TimeInterval,
-        generation currentGeneration: UUID
+        generation currentGeneration: UUID,
+        progressStart: Double = 0,
+        progressWeight: Double = 1
     ) async throws -> [TranscriptSegment] {
         try requireCurrentGeneration(currentGeneration)
         guard models.installed.contains(activeModel) else { throw WhisperError.modelMissing }
@@ -157,14 +172,16 @@ final class TranscriptionModel: ObservableObject {
         let currentTrackID = UUID()
         trackID = currentTrackID
         phase = .transcribing
-        progress = 0
+        progress = max(progress, progressStart)
         let pieces = try await engine.transcribe(
             url: url, modelURL: modelURL, cancellation: cancellation
         ) { [weak self] value in
             Task { @MainActor [weak self] in
                 guard let self, self.documentID == currentGeneration,
                       self.trackID == currentTrackID, self.isWorking else { return }
-                self.progress = max(self.progress, min(1, value))
+                guard value.isFinite else { return }
+                let combined = progressStart + progressWeight * max(0, min(1, value))
+                self.progress = max(self.progress, min(1, combined))
             }
         }
         try requireCurrentGeneration(currentGeneration)
@@ -179,7 +196,7 @@ final class TranscriptionModel: ObservableObject {
         } else {
             text = collected.map(\.text).joined()
         }
-        progress = 1
+        progress = max(progress, min(1, progressStart + progressWeight))
         return collected
     }
 
@@ -235,7 +252,7 @@ struct TranscriptionView: View {
                     if model.phase == .transcribing {
                         Text(model.progress, format: .percent.precision(.fractionLength(0)))
                             .monospacedDigit()
-                            .help("whisper.track_progress")
+                            .help("whisper.total_progress")
                     }
                 } else if model.phase == .finished {
                     Image(systemName: "checkmark.circle.fill")

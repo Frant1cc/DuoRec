@@ -104,6 +104,35 @@ struct WhisperChecks {
         precondition(model.phase == .finished && model.text == "你好。 Hello.こんにちは。" && model.progress == 1)
         precondition(!model.isWorking)
 
+        // Unequal track lengths expose accidental per-track resets/equal weighting.
+        let dualProbe = RecognitionProbe()
+        var dualArrivals = dualProbe.arrivals.makeAsyncIterator()
+        let dual = TranscriptionModel(models: store, engine: dualProbe,
+                                      sourceResolver: { $0 }, trackExtractor: { _, _ in
+            [.init(source: .system, url: audio, startTime: 0, firstMediaTime: 0, duration: 20),
+             .init(source: .microphone, url: audio, startTime: 10, firstMediaTime: 10, duration: 60)]
+        })
+        let dualTask = dual.transcribe(url: audio, outputFolderURL: root)!
+        let systemCall = await dualArrivals.next()!
+        systemCall.progress(0.5)
+        try await Task.sleep(for: .milliseconds(20))
+        precondition(dual.progress == 0.125)
+        await dualProbe.complete([WhisperPiece(start: 0, end: 1, text: "你好")])
+        let micCall = await dualArrivals.next()!
+        precondition(dual.progress == 0.25, "Progress reset when the second track started")
+        systemCall.progress(1)
+        micCall.progress(0.5)
+        try await Task.sleep(for: .milliseconds(20))
+        precondition(dual.progress == 0.625)
+        micCall.progress(0.1)
+        micCall.progress(.nan)
+        try await Task.sleep(for: .milliseconds(20))
+        precondition(dual.progress == 0.625, "Late/invalid callbacks regressed progress")
+        await dualProbe.complete([]) // A silent second track must still finish the job.
+        await dualTask.value
+        precondition(dual.progress == 1 && dual.phase == .finished && dual.segments.count == 1)
+        print("PASS: duration-weighted total progress, track transition, stale callbacks and silent-track completion")
+
         store.remove(.small)
         precondition(!store.isReady)
         let missing = model.transcribe(url: audio, outputFolderURL: root)!
@@ -150,28 +179,64 @@ struct WhisperChecks {
         let rate = WhisperAudioChunks.sampleRate
         let cancellation = WhisperCancellation()
         let speech = [Float](repeating: 0.1, count: 5 * rate)
-        let pause = [Float](repeating: 0, count: rate)
+        let pause = [Float](repeating: 0, count: rate * 12 / 10)
         let bilingual = speech + pause + speech
         try bilingual.withUnsafeBufferPointer { samples in
-            let first = try WhisperAudioChunks.next(in: samples, from: 0, cancellation: cancellation)
+            let first = try WhisperAudioChunks.next(in: samples, from: 0, cancellation: cancellation)!
             precondition(first.upperBound > 5 * rate && first.upperBound < 6 * rate,
                          "A language switch after a pause must get a fresh detection window")
-            let second = try WhisperAudioChunks.next(in: samples, from: first.upperBound, cancellation: cancellation)
+            let second = try WhisperAudioChunks.next(in: samples, from: first.upperBound, cancellation: cancellation)!
+            precondition(second.lowerBound > first.upperBound, "Long pauses should be skipped")
             precondition(second.upperBound == samples.count)
         }
         for audio in [[Float](repeating: 0.1, count: 71 * rate + 7),
-                      [Float](repeating: 0, count: 65 * rate),
-                      [Float](repeating: 0.01, count: 77), []] {
+                      [Float](repeating: 0.0008, count: 31 * rate),
+                      [Float](repeating: 0.01, count: 77)] {
             try audio.withUnsafeBufferPointer { samples in
                 var end = 0
                 while end < samples.count {
-                    let range = try WhisperAudioChunks.next(in: samples, from: end, cancellation: cancellation)
+                    let range = try WhisperAudioChunks.next(in: samples, from: end, cancellation: cancellation)!
                     precondition(range.lowerBound == end && range.count > 0)
                     precondition(range.count <= WhisperAudioChunks.maximumSamples)
                     end = range.upperBound
                 }
                 precondition(end == samples.count, "Chunking lost audio or overlapped it")
             }
+        }
+        for audio in [[Float](repeating: 0, count: 65 * rate),
+                      [Float](repeating: 0.00001, count: 10 * rate), []] {
+            try audio.withUnsafeBufferPointer {
+                let range = try WhisperAudioChunks.next(in: $0, from: 0, cancellation: cancellation)
+                precondition(range == nil, "Silence should never be sent to inference")
+            }
+        }
+        var intermittent = [Float](repeating: 0, count: 60 * rate)
+        for index in intermittent.indices where index % (5 * rate) < 4 * rate {
+            intermittent[index] = 0.1
+        }
+        try intermittent.withUnsafeBufferPointer { samples in
+            var cursor = 0
+            var ranges: [Range<Int>] = []
+            while let range = try WhisperAudioChunks.next(in: samples, from: cursor, cancellation: cancellation) {
+                precondition(range.count <= WhisperAudioChunks.maximumSamples)
+                precondition(samples[cursor..<range.lowerBound].allSatisfy { $0 == 0 })
+                ranges.append(range)
+                cursor = range.upperBound
+            }
+            precondition(samples[cursor...].allSatisfy { $0 == 0 })
+            precondition(ranges.count == 4, "Short pauses created too many inference windows")
+            print("PASS: 60 s with 4 s speech / 1 s pauses needs \(ranges.count) calls (previously 13)")
+        }
+        // Isolated short/quiet speech retains padding and its original timeline.
+        let padded = [Float](repeating: 0, count: 10 * rate) +
+            [Float](repeating: 0.0008, count: rate / 5) +
+            [Float](repeating: 0, count: 10 * rate)
+        try padded.withUnsafeBufferPointer { samples in
+            let range = try WhisperAudioChunks.next(in: samples, from: 0, cancellation: cancellation)!
+            precondition(range.lowerBound == 10 * rate - rate / 5)
+            precondition(range.upperBound == 10 * rate + 2 * rate / 5)
+            let tail = try WhisperAudioChunks.next(in: samples, from: range.upperBound, cancellation: cancellation)
+            precondition(tail == nil)
         }
         cancellation.cancel()
         do {
@@ -180,6 +245,6 @@ struct WhisperChecks {
             }
             preconditionFailure("Chunk planning ignored cancellation")
         } catch is CancellationError { }
-        print("PASS: automatic original-language parameters, pause boundaries, bounded contiguous chunks and cancellation")
+        print("PASS: original-language parameters, silence skipping, quiet speech, padding, bounded chunks and cancellation")
     }
 }

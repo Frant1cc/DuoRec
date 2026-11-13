@@ -1247,18 +1247,18 @@
         }
       }
     },
-    "whisper.track_progress": {
+    "whisper.total_progress": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Progress for current audio track"
+            "value": "Overall transcription progress across all source tracks, weighted by duration"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "当前音轨识别进度"
+            "value": "全部来源音轨的总转写进度，按音轨时长合计"
           }
         }
       }

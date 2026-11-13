@@ -18,50 +18,58 @@ nonisolated enum WhisperTranscriptText {
     }
 }
 
-// Re-detect language at pauses instead of locking a whole track to the language
-// heard in its first 30 seconds. Keep ranges contiguous so timestamps and audio
-// coverage survive chunking. This is a pause heuristic, not a speech filter.
+// Skip near-silence, retaining original sample positions and 200 ms of padding.
+// Short pauses stay inside a ~12–30 s window; longer pauses still separate
+// utterances so a new language can be detected even after a short sentence.
+// This conservative energy gate is not a speech/noise classifier.
 nonisolated enum WhisperAudioChunks {
     static let sampleRate = 16_000
     static let maximumSamples = 30 * sampleRate
+    static let silenceRMS: Float = 0.0003
 
     static func next(in samples: UnsafeBufferPointer<Float>, from start: Int,
-                     cancellation: WhisperCancellation) throws -> Range<Int> {
-        let limit = min(samples.count, start + maximumSamples)
+                     cancellation: WhisperCancellation) throws -> Range<Int>? {
+        try cancellation.check()
         let frameSize = sampleRate / 50 // 20 ms
-        let minimumSamples = 3 * sampleRate
-        let pauseSamples = sampleRate * 3 / 5 // 600 ms
-        var silenceStart: Int?
-        var quietestEnergy = Double.infinity
-        var fallbackEnd = limit
+        let padding = sampleRate / 5
+        let minimumSamples = 12 * sampleRate
+        let pauseSamples = sampleRate * 3 / 5
+        let utterancePauseSamples = sampleRate * 11 / 10
 
-        for frameStart in stride(from: start, to: limit, by: frameSize) {
-            try cancellation.check()
-            let frameEnd = min(limit, frameStart + frameSize)
+        func isAudible(_ frameStart: Int, _ frameEnd: Int) -> Bool {
             var energy = 0.0
             for index in frameStart..<frameEnd {
                 let sample = Double(samples[index])
                 energy += sample * sample
             }
-            energy /= Double(frameEnd - frameStart)
-            if energy < 0.003 * 0.003 {
-                if silenceStart == nil { silenceStart = frameStart }
-                if let silenceStart, silenceStart - start >= minimumSamples,
-                   frameEnd - silenceStart >= pauseSamples {
-                    return start..<(silenceStart + pauseSamples / 2)
-                }
+            return energy > Double(silenceRMS) * Double(silenceRMS) * Double(frameEnd - frameStart)
+        }
+
+        var firstAudible = start
+        while firstAudible < samples.count {
+            try cancellation.check()
+            let end = min(samples.count, firstAudible + frameSize)
+            if isAudible(firstAudible, end) { break }
+            firstAudible = end
+        }
+        guard firstAudible < samples.count else { return nil }
+        let lowerBound = max(start, firstAudible - padding)
+        let limit = min(samples.count, lowerBound + maximumSamples)
+        var lastAudibleEnd = firstAudible
+        for frameStart in stride(from: firstAudible, to: limit, by: frameSize) {
+            try cancellation.check()
+            let frameEnd = min(limit, frameStart + frameSize)
+            if isAudible(frameStart, frameEnd) {
+                lastAudibleEnd = frameEnd
             } else {
-                silenceStart = nil
-            }
-            // If speech has no long pause, cut at a quiet frame in the final
-            // five seconds rather than always cutting exactly at 30 seconds.
-            if frameStart - start >= maximumSamples - 5 * sampleRate,
-               energy < quietestEnergy {
-                quietestEnergy = energy
-                fallbackEnd = frameEnd
+                let silenceSamples = frameEnd - lastAudibleEnd
+                if silenceSamples >= utterancePauseSamples ||
+                    (lastAudibleEnd - lowerBound >= minimumSamples && silenceSamples >= pauseSamples) {
+                    return lowerBound..<min(limit, lastAudibleEnd + padding)
+                }
             }
         }
-        return start..<(limit == samples.count ? limit : fallbackEnd)
+        return lowerBound..<min(limit, lastAudibleEnd + padding)
     }
 }
 
@@ -108,6 +116,12 @@ actor WhisperTranscriber: WhisperRecognizing {
         let sampleCount = pcm.count / MemoryLayout<Float>.size
         guard sampleCount > 0, sampleCount <= Int(Int32.max) else { throw WhisperError.unreadableAudio }
 
+        // Entirely silent tracks do not need to load the model at all.
+        let firstRange = try pcm.withUnsafeBytes {
+            try WhisperAudioChunks.next(in: $0.bindMemory(to: Float.self), from: 0, cancellation: cancellation)
+        }
+        guard let firstRange else { progress(1); return [] }
+
         var contextParams = whisper_context_default_params()
         #if arch(arm64)
         contextParams.use_gpu = true
@@ -127,10 +141,10 @@ actor WhisperTranscriber: WhisperRecognizing {
         return try pcm.withUnsafeBytes { bytes in
             let samples = bytes.bindMemory(to: Float.self)
             var pieces: [WhisperPiece] = []
-            var start = 0
-            while start < sampleCount {
+            var nextRange: Range<Int>? = firstRange
+            while let range = nextRange {
                 try cancellation.check()
-                let range = try WhisperAudioChunks.next(in: samples, from: start, cancellation: cancellation)
+                progress(Double(range.lowerBound) / Double(sampleCount))
                 let callbacks = WhisperCallbacks(cancellation: cancellation) { fraction in
                     progress((Double(range.lowerBound) + Double(range.count) * fraction) / Double(sampleCount))
                 }
@@ -154,9 +168,10 @@ actor WhisperTranscriber: WhisperRecognizing {
                     let t1 = min(duration, max(t0, Double(whisper_full_get_segment_t1(context, index)) / 100))
                     pieces.append(WhisperPiece(start: offset + t0, end: offset + t1, text: text))
                 }
-                start = range.upperBound
-                progress(Double(start) / Double(sampleCount))
+                progress(Double(range.upperBound) / Double(sampleCount))
+                nextRange = try WhisperAudioChunks.next(in: samples, from: range.upperBound, cancellation: cancellation)
             }
+            progress(1)
             return pieces
         }
     }
