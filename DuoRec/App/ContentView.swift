@@ -1,5 +1,6 @@
 import AVFoundation
 import AppKit
+import Combine
 import SwiftUI
 
 private enum WorkspaceSection: String, CaseIterable, Identifiable {
@@ -155,8 +156,7 @@ private struct RecordingView: View {
     private var meterSection: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 16) {
-                LevelRow(title: "source.system_audio", icon: "macbook", level: recorder.systemLevel)
-                LevelRow(title: "source.microphone", icon: "mic", level: recorder.microphoneLevel)
+                InputWaveforms()
                 if let meterHelpText {
                     Text(meterHelpText)
                         .font(.caption)
@@ -391,10 +391,89 @@ private struct PermissionBadge: View {
     }
 }
 
-private struct LevelRow: View {
+private struct InputWaveforms: View {
+    @EnvironmentObject private var recorder: RecorderModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var history: [Sample] = []
+    @State private var lastSampleTime: ContinuousClock.Instant?
+
+    private static let sampleInterval = Duration.milliseconds(60)
+
+    private struct Sample {
+        var system = 0.0
+        var microphone = 0.0
+    }
+
+    private var isActive: Bool { recorder.isMonitoring || recorder.isRecording }
+
+    var body: some View {
+        let isScrolling = isActive && !reduceMotion
+        let systemLevels = isActive ? history.map(\.system) : []
+        let microphoneLevels = isActive ? history.map(\.microphone) : []
+
+        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !isScrolling)) { _ in
+            let progress = isScrolling ? lastSampleTime.map {
+                min(1, $0.duration(to: .now) / Self.sampleInterval)
+            } : nil
+
+            VStack(spacing: 16) {
+                WaveformRow(title: "source.system_audio", icon: "macbook", levels: systemLevels,
+                            scrollProgress: progress, reduceMotion: reduceMotion)
+                WaveformRow(title: "source.microphone", icon: "mic", levels: microphoneLevels,
+                            scrollProgress: progress, reduceMotion: reduceMotion)
+            }
+        }
+        .task(id: recorder.state) {
+            history.removeAll(keepingCapacity: true)
+            lastSampleTime = nil
+            guard isActive else { return }
+            try? await collectLevels()
+        }
+    }
+
+    private func collectLevels() async throws {
+        // Keep the loudest measurement in each interval, even when a source
+        // sends several buffers or sends no buffers at all.
+        var peak = Sample()
+        let systemLevels = recorder.$systemLevel.dropFirst().sink { level in
+            peak.system = max(peak.system, level)
+        }
+        let microphoneLevels = recorder.$microphoneLevel.dropFirst().sink { level in
+            peak.microphone = max(peak.microphone, level)
+        }
+        defer {
+            systemLevels.cancel()
+            microphoneLevels.cancel()
+        }
+
+        while !Task.isCancelled {
+            try await Task.sleep(for: Self.sampleInterval)
+            if history.count == WaveformRow.sampleCount + 1 {
+                history.removeFirst()
+            }
+            history.append(peak)
+            lastSampleTime = .now
+            peak = Sample()
+        }
+    }
+}
+
+private struct WaveformRow: View {
+    static let sampleCount = 48
+    // The recorder maps -60...0 dBFS to 0...1, so 0.25 is -45 dBFS.
+    private static let displayThreshold = 0.25
+
     let title: LocalizedStringKey
     let icon: String
-    let level: Double
+    let levels: [Double]
+    let scrollProgress: Double?
+    let reduceMotion: Bool
+
+    private var currentLevel: Double { levels.last ?? 0 }
+
+    private func visibleAmplitude(for level: Double) -> Double {
+        max(0, level - Self.displayThreshold) / (1 - Self.displayThreshold)
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -403,10 +482,35 @@ private struct LevelRow: View {
                 .font(.callout)
                 .frame(width: 112, alignment: .leading)
 
-            ProgressView(value: level, total: 1)
-                .tint(level > 0.82 ? .orange : .accentColor)
-                .accessibilityLabel(Text(title))
+            Canvas { context, size in
+                let spacing = size.width / CGFloat(Self.sampleCount)
+                let barWidth = spacing * 0.5
+                let offset = CGFloat(scrollProgress ?? 0) * spacing
+                // The extra sample slides in from beyond the right edge.
+                let barCount = Self.sampleCount + (scrollProgress == nil ? 0 : 1)
+                let litCount = Int((visibleAmplitude(for: currentLevel) * Double(Self.sampleCount)).rounded(.up))
+
+                for index in 0..<barCount {
+                    let sampleIndex = levels.count + index - barCount
+                    let level = sampleIndex < 0 ? 0 : levels[sampleIndex]
+                    let amplitude = visibleAmplitude(for: level)
+                    let hasSignal = reduceMotion ? index < litCount : amplitude > 0
+
+                    let height = reduceMotion ? 6 : 2 + CGFloat(amplitude) * (size.height - 2)
+                    let color = hasSignal ? Color.blue : Color.secondary.opacity(0.35)
+                    let bar = CGRect(x: (CGFloat(index) + 0.5) * spacing - barWidth / 2 - offset,
+                                     y: (size.height - height) / 2,
+                                     width: barWidth, height: height)
+                    let cornerRadius = min(barWidth, height) / 2
+                    context.fill(Path(roundedRect: bar, cornerRadius: cornerRadius), with: .color(color))
+                }
+            }
+            .frame(height: 40)
+            .clipped()
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(Text(currentLevel, format: .percent.precision(.fractionLength(0))))
     }
 }
 
