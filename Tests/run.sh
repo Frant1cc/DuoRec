@@ -45,7 +45,7 @@ compile_check TranscriptTimelineChecks DuoRec/Audio/AudioSource.swift DuoRec/Tra
 compile_check WhisperDownloadChecks DuoRec/Whisper/WhisperDownloader.swift DuoRec/Whisper/WhisperModels.swift
 python3 Tests/check_downloads.py "$output/WhisperDownloadChecks"
 
-compile_check RecordingSafetyChecks DuoRec/Audio/*.swift DuoRec/Recording/RecordingFinalizer.swift
+compile_check RecordingSafetyChecks DuoRec/Audio/*.swift DuoRec/Recording/RecordingFinalizer.swift DuoRec/Recording/RecordingLibrary.swift
 "$output/RecordingSafetyChecks" "$output"
 
 if [ -n "${DUOREC_LANGUAGE_MODEL:-}" ]; then

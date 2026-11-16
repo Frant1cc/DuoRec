@@ -17,7 +17,7 @@ enum AudioTrackExtractor {
         let duration: TimeInterval
     }
 
-    static func companionURL(for mixedRecordingURL: URL) -> URL {
+    nonisolated static func companionURL(for mixedRecordingURL: URL) -> URL {
         mixedRecordingURL.deletingPathExtension().appendingPathExtension("tracks.mov")
     }
 

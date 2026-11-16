@@ -16,7 +16,8 @@ final class TranscriptionModel: ObservableObject {
     @Published var filter: TranscriptFilter = .all
     @Published private(set) var segments: [TranscriptSegment] = []
     @Published private(set) var usesSourceTimeline = false
-    @Published private(set) var fileName: String?
+    @Published private(set) var fileURL: URL?
+    var fileName: String? { fileURL?.lastPathComponent }
     @Published private(set) var phase: Phase = .idle
     @Published var errorMessage: String?
 
@@ -69,7 +70,7 @@ final class TranscriptionModel: ObservableObject {
         filter = .all
         segments = []
         usesSourceTimeline = false
-        fileName = nil
+        fileURL = nil
         errorMessage = nil
     }
 
@@ -79,7 +80,7 @@ final class TranscriptionModel: ObservableObject {
         cancel()
         let currentGeneration = UUID()
         documentID = currentGeneration
-        fileName = url.lastPathComponent
+        fileURL = url
         phase = .preparing
         cancellation = WhisperCancellation()
         let runCancellation = cancellation

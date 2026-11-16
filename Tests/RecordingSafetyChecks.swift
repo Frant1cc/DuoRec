@@ -134,6 +134,62 @@ func compressedAudio(in url: URL) async throws -> [Data] {
     return result
 }
 
+func checkRecordingRenames(in folder: URL, mp4: URL, sourceAudio: URL, legacyTracks: URL) async throws {
+    let manager = FileManager.default
+    try manager.createDirectory(at: folder, withIntermediateDirectories: true)
+    let dated = folder.appendingPathComponent("2001-02-03 04-05-06 DuoRec.mp4")
+    let standalone = folder.appendingPathComponent("2002-03-04 05-06-07 DuoRec.m4a")
+    let mixed = folder.appendingPathComponent("Legacy.m4a")
+    let tracks = AudioTrackExtractor.companionURL(for: mixed)
+    let collision = folder.appendingPathComponent("In use.tracks.mov")
+    try manager.copyItem(at: mp4, to: dated)
+    try manager.copyItem(at: sourceAudio, to: standalone)
+    try manager.copyItem(at: sourceAudio, to: mixed)
+    try manager.copyItem(at: legacyTracks, to: tracks)
+    try manager.copyItem(at: legacyTracks, to: collision)
+
+    let original = try await RecordingLibrary.load(from: folder)
+    let pair = original.first { $0.id == mixed }!
+    do {
+        _ = try await RecordingLibrary.rename(pair, to: "In use", in: folder)
+        fatalError("A companion file was overwritten")
+    } catch RecordingLibrary.RenameError.nameInUse {
+        precondition(manager.fileExists(atPath: mixed.path) && manager.fileExists(atPath: tracks.path))
+        precondition(!manager.fileExists(atPath: folder.appendingPathComponent("In use.m4a").path))
+    }
+
+    let legacy = original.first { $0.id == standalone }!
+    do {
+        _ = try await RecordingLibrary.rename(legacy, to: "In use", in: folder)
+        fatalError("A foreign companion was attached to a standalone recording")
+    } catch RecordingLibrary.RenameError.nameInUse {}
+    do {
+        _ = try await RecordingLibrary.rename(legacy, to: "bad/name", in: folder)
+        fatalError("A name with a path separator was accepted")
+    } catch RecordingLibrary.RenameError.invalidName {}
+
+    let renamedPair = try await RecordingLibrary.rename(pair, to: "访谈", in: folder)
+    let renamedSource = try await AudioTrackExtractor.transcriptionSourceURL(for: renamedPair.id)
+    precondition(renamedPair.id.lastPathComponent == "访谈.m4a")
+    precondition(renamedSource?.lastPathComponent == "访谈.tracks.mov")
+    precondition(renamedPair.byteCount == pair.byteCount)
+
+    let renamedLegacy = try await RecordingLibrary.rename(legacy, to: "早期录音", in: folder)
+    let generated = original.first { $0.id == dated }!
+    let alias = folder.deletingLastPathComponent().appendingPathComponent("rename-alias", isDirectory: true)
+    try manager.createSymbolicLink(at: alias, withDestinationURL: folder)
+    let renamedMP4 = try await RecordingLibrary.rename(generated, to: "Weekly", in: alias)
+    precondition(renamedMP4.id == folder.appendingPathComponent("Weekly.mp4"))
+    let lowercase = try await RecordingLibrary.rename(renamedMP4, to: "weekly", in: folder)
+    precondition(lowercase.id.lastPathComponent == "weekly.mp4")
+
+    let reloaded = try await RecordingLibrary.load(from: folder)
+    precondition(reloaded.map(\.date) == original.map(\.date), "Renaming changed date ordering")
+    precondition(reloaded.first(where: { $0.id == renamedLegacy.id })?.name == "早期录音")
+    precondition(reloaded.first(where: { $0.id == renamedPair.id })?.companion?.url == renamedSource)
+    precondition(reloaded.last?.id == lowercase.id)
+}
+
 @main struct RecordingSafetyChecks {
     static func main() async throws {
         setbuf(stdout, nil)
@@ -213,6 +269,28 @@ func compressedAudio(in url: URL) async throws -> [Data] {
         precondition(ordinaryMP4Source == nil)
         let legacySource = try await AudioTrackExtractor.transcriptionSourceURL(for: legacyM4A)
         precondition(legacySource == legacyCompanion)
+        let generated = root.appendingPathComponent("2001-02-03 04-05-06 DuoRec.mp4")
+        try FileManager.default.copyItem(at: renamed, to: generated)
+        let renamedInFolder = root.appendingPathComponent("Meeting.mp4")
+        try FileManager.default.copyItem(at: renamed, to: renamedInFolder)
+        let symlink = root.appendingPathComponent("Linked recording.mp4")
+        try FileManager.default.createSymbolicLink(at: symlink, withDestinationURL: renamed)
+        let library = try await RecordingLibrary.load(from: root)
+        precondition(Set(library.map(\.id)) == [generated, legacyM4A, renamedInFolder])
+        precondition(library.last?.id == generated && library.last?.name == nil)
+        precondition(library.first(where: { $0.id == renamedInFolder })?.name == "Meeting")
+        let pair = library.first(where: { $0.id == legacyM4A })!
+        let legacySize = try [legacyM4A, legacyCompanion].reduce(Int64(0)) { total, url in
+            total + Int64(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize!)
+        }
+        precondition(pair.files.map(\.url) == [legacyM4A, legacyCompanion])
+        precondition(pair.byteCount == legacySize && pair.duration >= 1.9)
+        print("PASS: recording list recognizes renamed recordings and legacy pairs while excluding unrelated files")
+        try await checkRecordingRenames(
+            in: root.appendingPathComponent("rename", isDirectory: true),
+            mp4: renamed, sourceAudio: separated[0].url, legacyTracks: legacyCompanion
+        )
+        print("PASS: renaming preserves ordering, standalone legacy files and pairs, and rolls back name conflicts")
         do {
             try await AudioRecordingFile.save(legacyCompanion, to: renamed)
             fatalError("An existing recording was overwritten")

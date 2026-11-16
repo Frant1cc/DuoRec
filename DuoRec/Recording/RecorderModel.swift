@@ -497,6 +497,20 @@ final class RecorderModel: ObservableObject {
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
+    func didTrashRecordings(_ urls: [URL]) {
+        if let lastRecordingURL, urls.contains(lastRecordingURL) {
+            self.lastRecordingURL = nil
+        }
+    }
+
+    func didRenameRecording(from previous: URL, to renamed: URL) {
+        guard let lastRecordingURL, lastRecordingURL.lastPathComponent == previous.lastPathComponent,
+              lastRecordingURL.deletingLastPathComponent().resolvingSymlinksInPath()
+                == previous.deletingLastPathComponent().resolvingSymlinksInPath()
+        else { return }
+        self.lastRecordingURL = renamed
+    }
+
     private func startElapsedTimer() {
         elapsedSeconds = 0
         elapsedTask?.cancel()

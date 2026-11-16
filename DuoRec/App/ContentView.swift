@@ -5,6 +5,7 @@ import SwiftUI
 
 private enum WorkspaceSection: String, CaseIterable, Identifiable {
     case recording
+    case recordingList
     case transcription
     case languageRecognition
 
@@ -13,6 +14,7 @@ private enum WorkspaceSection: String, CaseIterable, Identifiable {
     var title: LocalizedStringKey {
         switch self {
         case .recording: "navigation.recording"
+        case .recordingList: "navigation.recording_list"
         case .transcription: "navigation.transcription"
         case .languageRecognition: "navigation.language_recognition"
         }
@@ -21,6 +23,7 @@ private enum WorkspaceSection: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .recording: "waveform"
+        case .recordingList: "list.bullet"
         case .transcription: "doc.text"
         case .languageRecognition: "character.bubble"
         }
@@ -65,6 +68,14 @@ struct ContentView: View {
                 switch selection ?? .recording {
                 case .recording:
                     RecordingView()
+                case .recordingList:
+                    RecordingListView(
+                        transcription: transcription,
+                        models: whisper,
+                        openTranscription: { selection = .transcription },
+                        openLanguageRecognition: { selection = .languageRecognition }
+                    )
+                    .id(recorder.outputFolderURL)
                 case .transcription:
                     TranscriptionView(model: transcription, models: whisper)
                 case .languageRecognition:

@@ -121,6 +121,174 @@
         }
       }
     },
+    "navigation.recording_list" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recordings" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音列表" } }
+      }
+    },
+    "common.cancel" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "取消" } }
+      }
+    },
+    "recordings.loading" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading Recordings…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在载入录音…" } }
+      }
+    },
+    "recordings.empty.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No Recordings" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "暂无录音" } }
+      }
+    },
+    "recordings.empty.description" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recordings saved in the current folder will appear here." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存到当前文件夹的 DuoRec 录音会显示在这里。" } }
+      }
+    },
+    "recordings.load_failed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn’t Open the Recordings Folder" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法打开录音文件夹" } }
+      }
+    },
+    "recordings.retry" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try Again" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重试" } }
+      }
+    },
+    "recordings.play" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Play" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "播放" } }
+      }
+    },
+    "recordings.pause" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pause" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "暂停" } }
+      }
+    },
+    "recordings.playback.position" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Playback Position" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "播放进度" } }
+      }
+    },
+    "recordings.playback.failed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn’t Play the Recording" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法播放这条录音" } }
+      }
+    },
+    "recordings.playback.error" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The audio file couldn’t be played." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法播放音频文件。" } }
+      }
+    },
+    "recordings.transcribe" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Transcribe" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "转写" } }
+      }
+    },
+    "recordings.more" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "More Actions" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "更多操作" } }
+      }
+    },
+    "common.save" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存" } }
+      }
+    },
+    "recordings.rename.action" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rename…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重命名…" } }
+      }
+    },
+    "recordings.rename.name" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording Name" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音名称" } }
+      }
+    },
+    "recordings.rename.invalid" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter a name that does not start with a period or contain a slash, colon, or line break." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请输入有效的名称。名称不能以句点开头，也不能包含斜杠、冒号或换行。" } }
+      }
+    },
+    "recordings.rename.name_in_use" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This name is already in use." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这个名称已被使用。" } }
+      }
+    },
+    "recordings.rename.changed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The recording has changed. Cancel and reopen Rename to try again." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音文件已发生变化。请取消后重新打开重命名。" } }
+      }
+    },
+    "recordings.rename.restore_failed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The original name couldn’t be restored. Check the files in the save folder." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法恢复原文件名。请在保存文件夹中检查录音文件。" } }
+      }
+    },
+    "recordings.trash.confirm" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Move Recording to Trash?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "将录音移到废纸篓？" } }
+      }
+    },
+    "recordings.trash.action" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Move to Trash" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "移到废纸篓" } }
+      }
+    },
+    "recordings.trash.single %@" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "“%@” will be moved to the Trash." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "「%@」将移到废纸篓。" } }
+      }
+    },
+    "recordings.trash.pair %@ %@" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This recording uses two files, “%1$@” and “%2$@”. Both will be moved to the Trash." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这条录音包含两个文件，「%1$@」和「%2$@」将一起移到废纸篓。" } }
+      }
+    },
+    "recordings.trash.failed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn’t Move the Recording to Trash" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法将录音移到废纸篓" } }
+      }
+    },
+    "recordings.trash.incomplete" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Some files are still in the recordings folder." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "部分文件仍在录音文件夹中。" } }
+      }
+    },
+    "recordings.trash.changed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The files changed. Review the refreshed list before trying again." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音文件已发生变化。请查看更新后的列表再试。" } }
+      }
+    },
     "navigation.transcription": {
       "localizations": {
         "en": {
